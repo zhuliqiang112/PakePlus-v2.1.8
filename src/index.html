@@ -1,11 +1,1137 @@
 <!DOCTYPE html>
-<html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>PakePlus</title>
-    </head>
-    <body>
-        Hello World
-    </body>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>莱芜公司综合库监管码转换器</title>
+    <!-- Tailwind CSS v3 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#2563eb',
+                        secondary: '#64748b',
+                        success: '#10b981',
+                        warning: '#f59e0b',
+                        danger: '#ef4444',
+                        light: '#f8fafc',
+                        dark: '#1e293b'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        'card': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                        'card-hover': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .transition-all-300 {
+                transition: all 300ms ease-in-out;
+            }
+            .glass-effect {
+                background: rgba(255, 255, 255, 0.7);
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+            }
+            .file-drop-active {
+                border-color: #2563eb;
+                background-color: rgba(37, 99, 235, 0.05);
+            }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <!-- 页面标题 -->
+        <header class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-dark mb-2">莱芜公司综合库监管码转换器</h1>
+            <p class="text-secondary text-lg">自动提取20位数字并替换到模板文件</p>
+        </header>
+
+        <!-- 主要内容区 -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- 左侧：文件上传区 -->
+            <div class="glass-effect rounded-xl shadow-card p-6 transition-all-300 hover:shadow-card-hover">
+                <h2 class="text-2xl font-semibold text-dark mb-6 flex items-center">
+                    <i class="fa fa-upload mr-2 text-primary"></i>文件上传
+                </h2>
+                
+                <!-- 源文件上传 -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-secondary mb-2">源文件 <span class="text-danger">*</span></label>
+                    <div id="sourceFileDrop" class="border-2 border-dashed border-secondary rounded-lg p-6 text-center cursor-pointer transition-all-300 hover:border-primary">
+                        <input type="file" id="sourceFileInput" class="hidden" accept=".txt,.xml,.doc,.docx,.pdf">
+                        <i class="fa fa-file-text-o text-4xl text-secondary mb-2"></i>
+                        <p class="text-sm text-secondary mb-1">点击或拖放文件到此处</p>
+                        <p class="text-xs text-secondary">支持 .txt, .xml, .doc, .docx, .pdf 格式</p>
+                        <div id="sourceFileInfo" class="mt-3 hidden">
+                            <div class="flex items-center justify-between bg-blue-50 p-2 rounded">
+                                <span id="sourceFileName" class="text-sm truncate"></span>
+                                <button id="removeSourceFile" class="text-danger hover:text-red-700">
+                                    <i class="fa fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 模板文件上传 -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-secondary mb-2">模板文件 <span class="text-danger">*</span></label>
+                    <div id="templateFileDrop" class="border-2 border-dashed border-secondary rounded-lg p-6 text-center cursor-pointer transition-all-300 hover:border-primary">
+                        <input type="file" id="templateFileInput" class="hidden" accept=".xml">
+                        <i class="fa fa-file-code-o text-4xl text-secondary mb-2"></i>
+                        <p class="text-sm text-secondary mb-1">点击或拖放文件到此处</p>
+                        <p class="text-xs text-secondary">仅支持 .xml 格式</p>
+                        <div id="templateFileInfo" class="mt-3 hidden">
+                            <div class="flex items-center justify-between bg-blue-50 p-2 rounded">
+                                <span id="templateFileName" class="text-sm truncate"></span>
+                                <button id="removeTemplateFile" class="text-danger hover:text-red-700">
+                                    <i class="fa fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 提取的20位数字显示 -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-secondary mb-2">提取的20位数字</label>
+                    <div class="relative">
+                        <input type="text" id="extractedNumber" class="w-full px-4 py-2 border border-secondary rounded-lg bg-white text-dark" readonly placeholder="数字将在此处显示">
+                        <button id="copyNumberBtn" class="absolute right-2 top-2 text-primary hover:text-blue-700" title="复制数字">
+                            <i class="fa fa-copy"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 表单输入区 -->
+                <div class="space-y-4">
+                    <div>
+                        <label for="documentNumber" class="block text-sm font-medium text-secondary mb-1">单号 <span class="text-danger">*</span></label>
+                        <input type="text" id="documentNumber" class="w-full px-4 py-2 border border-secondary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary" placeholder="请输入单号">
+                    </div>
+                    
+                    <div>
+                        <label for="documentDate" class="block text-sm font-medium text-secondary mb-1">日期 <span class="text-danger">*</span></label>
+                        <input type="date" id="documentDate" class="w-full px-4 py-2 border border-secondary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary">
+                    </div>
+                    
+                    <div>
+                        <label for="documentTime" class="block text-sm font-medium text-secondary mb-1">时间 <span class="text-danger">*</span></label>
+                        <input type="time" id="documentTime" class="w-full px-4 py-2 border border-secondary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary">
+                    </div>
+                </div>
+                
+                <!-- 操作按钮 -->
+                <div class="mt-8 flex space-x-4">
+                    <button id="processBtn" class="flex-1 bg-primary hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-all-300 flex items-center justify-center disabled:bg-gray-300 disabled:cursor-not-allowed">
+                        <i class="fa fa-magic mr-2"></i>生成新文件
+                    </button>
+                    <button id="resetBtn" class="bg-white border border-secondary hover:bg-gray-50 text-secondary font-medium py-2 px-4 rounded-lg transition-all-300 flex items-center justify-center">
+                        <i class="fa fa-refresh mr-2"></i>重置
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 右侧：预览区 -->
+            <div class="glass-effect rounded-xl shadow-card p-6 transition-all-300 hover:shadow-card-hover">
+                <h2 class="text-2xl font-semibold text-dark mb-6 flex items-center">
+                    <i class="fa fa-eye mr-2 text-primary"></i>文件预览
+                </h2>
+                
+                <!-- 预览标签页 -->
+                <div class="mb-4 border-b border-gray-200">
+                    <ul class="flex flex-wrap -mb-px text-sm font-medium text-center" id="previewTabs" role="tablist">
+                        <li class="mr-2" role="presentation">
+                            <button class="inline-block p-2 border-b-2 border-primary text-primary rounded-t-lg active" id="template-tab" data-tab="template-preview" type="button" role="tab" aria-controls="template-preview" aria-selected="true">
+                                模板文件
+                            </button>
+                        </li>
+                        <li class="mr-2" role="presentation">
+                            <button class="inline-block p-2 border-b-2 border-transparent hover:text-gray-600 hover:border-gray-300 rounded-t-lg" id="result-tab" data-tab="result-preview" type="button" role="tab" aria-controls="result-preview" aria-selected="false">
+                                结果文件
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+                
+                <!-- 预览内容区 -->
+                <div id="previewContent" class="relative">
+                    <!-- 模板预览 -->
+                    <div id="template-preview" class="tab-pane active">
+                        <div class="flex justify-between items-center mb-2">
+                            <h3 class="text-sm font-medium text-secondary">模板文件内容</h3>
+                            <div class="text-xs text-secondary">
+                                <span id="templateCharCount">0</span> 字符
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-4 h-96 overflow-auto font-mono text-xs text-gray-800 whitespace-pre-wrap" id="templateContent">
+                            <div class="flex items-center justify-center h-full text-secondary">
+                                <div class="text-center">
+                                    <i class="fa fa-file-code-o text-3xl mb-2"></i>
+                                    <p>上传模板文件后将显示内容预览</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 结果预览 -->
+                    <div id="result-preview" class="tab-pane hidden">
+                        <div class="flex justify-between items-center mb-2">
+                            <h3 class="text-sm font-medium text-secondary">生成的文件内容</h3>
+                            <div class="text-xs text-secondary">
+                                <span id="resultCharCount">0</span> 字符
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-4 h-96 overflow-auto font-mono text-xs text-gray-800 whitespace-pre-wrap" id="resultContent">
+                            <div class="flex items-center justify-center h-full text-secondary">
+                                <div class="text-center">
+                                    <i class="fa fa-magic text-3xl mb-2"></i>
+                                    <p>点击"生成新文件"后将显示结果预览</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 下载按钮 -->
+                <div id="downloadSection" class="mt-6 hidden">
+                    <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0">
+                                <i class="fa fa-check-circle text-success text-xl"></i>
+                            </div>
+                            <div class="ml-3">
+                                <h3 class="text-sm font-medium text-success">文件生成成功！</h3>
+                                <div class="mt-2 text-sm text-green-700">
+                                    <p>已成功将提取的20位数字和表单信息替换到模板文件中。</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button id="downloadBtn" class="w-full bg-success hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-all-300 flex items-center justify-center">
+                        <i class="fa fa-download mr-2"></i>下载新文件
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 操作日志 -->
+        <div class="mt-8 glass-effect rounded-xl shadow-card p-6 transition-all-300 hover:shadow-card-hover">
+            <h2 class="text-2xl font-semibold text-dark mb-4 flex items-center">
+                <i class="fa fa-history mr-2 text-primary"></i>操作日志
+            </h2>
+            <div class="bg-gray-50 rounded-lg p-4 h-40 overflow-auto font-mono text-xs text-gray-800" id="logContainer">
+                <div class="text-secondary italic">操作日志将显示在这里...</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 页脚 -->
+    <footer class="mt-12 py-6 bg-dark text-white text-center">
+        <p class="text-sm">© 2025 莱芜公司综合库监管码转换器 | 创作者：小强</p>
+    </footer>
+    
+    <!-- 通知提示 -->
+    <div id="notification" class="fixed bottom-4 right-4 transform translate-y-full opacity-0 transition-all-300 z-50 max-w-xs">
+        <div class="bg-white rounded-lg shadow-lg border-l-4 border-primary p-4">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <i id="notificationIcon" class="fa fa-info-circle text-primary text-xl"></i>
+                </div>
+                <div class="ml-3">
+                    <p id="notificationTitle" class="text-sm font-medium text-dark"></p>
+                    <p id="notificationMessage" class="mt-1 text-sm text-secondary"></p>
+                </div>
+                <button id="closeNotification" class="ml-auto text-gray-400 hover:text-gray-500">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let sourceFile = null;
+        let templateFile = null;
+        let extractedNumbers = []; // 改为数组存储所有提取的20位数字
+        let resultXml = '';
+        
+        // DOM元素
+        const sourceFileDrop = document.getElementById('sourceFileDrop');
+        const sourceFileInput = document.getElementById('sourceFileInput');
+        const sourceFileInfo = document.getElementById('sourceFileInfo');
+        const sourceFileName = document.getElementById('sourceFileName');
+        const removeSourceFile = document.getElementById('removeSourceFile');
+        
+        const templateFileDrop = document.getElementById('templateFileDrop');
+        const templateFileInput = document.getElementById('templateFileInput');
+        const templateFileInfo = document.getElementById('templateFileInfo');
+        const templateFileName = document.getElementById('templateFileName');
+        const removeTemplateFile = document.getElementById('removeTemplateFile');
+        
+        const extractedNumberInput = document.getElementById('extractedNumber');
+        const copyNumberBtn = document.getElementById('copyNumberBtn');
+        const documentNumberInput = document.getElementById('documentNumber');
+        const documentDateInput = document.getElementById('documentDate');
+        const documentTimeInput = document.getElementById('documentTime');
+        
+        const processBtn = document.getElementById('processBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        
+        const previewTabs = document.getElementById('previewTabs');
+        const templatePreview = document.getElementById('template-preview');
+        const resultPreview = document.getElementById('result-preview');
+        const templateContent = document.getElementById('templateContent');
+        const resultContent = document.getElementById('resultContent');
+        const templateCharCount = document.getElementById('templateCharCount');
+        const resultCharCount = document.getElementById('resultCharCount');
+        
+        const downloadSection = document.getElementById('downloadSection');
+        const downloadBtn = document.getElementById('downloadBtn');
+        
+        const logContainer = document.getElementById('logContainer');
+        const notification = document.getElementById('notification');
+        const notificationIcon = document.getElementById('notificationIcon');
+        const notificationTitle = document.getElementById('notificationTitle');
+        const notificationMessage = document.getElementById('notificationMessage');
+        const closeNotification = document.getElementById('closeNotification');
+        
+        // 初始化日期和时间为当前值
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        
+        documentDateInput.value = `${year}-${month}-${day}`;
+        documentTimeInput.value = `${hours}:${minutes}`;
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            addLog('应用已启动，等待文件上传...');
+            updateProcessButtonState();
+        });
+        
+        // 文件拖放处理
+        [sourceFileDrop, templateFileDrop].forEach(dropZone => {
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, preventDefaults, false);
+            });
+            
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, highlight, false);
+            });
+            
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, unhighlight, false);
+            });
+            
+            function highlight() {
+                dropZone.classList.add('file-drop-active');
+            }
+            
+            function unhighlight() {
+                dropZone.classList.remove('file-drop-active');
+            }
+            
+            dropZone.addEventListener('drop', handleDrop, false);
+            
+            function handleDrop(e) {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                
+                if (files.length > 0) {
+                    if (dropZone === sourceFileDrop) {
+                        handleSourceFile(files[0]);
+                    } else {
+                        handleTemplateFile(files[0]);
+                    }
+                }
+            }
+        });
+        
+        // 源文件上传处理
+        sourceFileDrop.addEventListener('click', () => sourceFileInput.click());
+        sourceFileInput.addEventListener('change', () => {
+            if (sourceFileInput.files.length > 0) {
+                handleSourceFile(sourceFileInput.files[0]);
+            }
+        });
+        
+        // 模板文件上传处理
+        templateFileDrop.addEventListener('click', () => templateFileInput.click());
+        templateFileInput.addEventListener('change', () => {
+            if (templateFileInput.files.length > 0) {
+                handleTemplateFile(templateFileInput.files[0]);
+            }
+        });
+        
+        // 移除源文件
+        removeSourceFile.addEventListener('click', () => {
+            sourceFile = null;
+            sourceFileInput.value = '';
+            sourceFileInfo.classList.add('hidden');
+            extractedNumberInput.value = '';
+            extractedNumbers = [];
+            addLog('源文件已移除');
+            updateProcessButtonState();
+        });
+        
+        // 移除模板文件
+        removeTemplateFile.addEventListener('click', () => {
+            templateFile = null;
+            templateFileInput.value = '';
+            templateFileInfo.classList.add('hidden');
+            templateContent.innerHTML = `
+                <div class="flex items-center justify-center h-full text-secondary">
+                    <div class="text-center">
+                        <i class="fa fa-file-code-o text-3xl mb-2"></i>
+                        <p>上传模板文件后将显示内容预览</p>
+                    </div>
+                </div>
+            `;
+            templateCharCount.textContent = '0';
+            addLog('模板文件已移除');
+            updateProcessButtonState();
+        });
+        
+        // 复制提取的数字
+        copyNumberBtn.addEventListener('click', () => {
+            if (extractedNumber) {
+                navigator.clipboard.writeText(extractedNumber).then(() => {
+                    showNotification('成功', '已复制20位数字到剪贴板', 'success');
+                    addLog('已复制提取的20位数字到剪贴板');
+                }).catch(err => {
+                    showNotification('错误', '复制失败，请手动复制', 'error');
+                    addLog('复制数字失败: ' + err.message);
+                });
+            }
+        });
+        
+        // 标签页切换
+        previewTabs.addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON') {
+                const tabId = e.target.getAttribute('data-tab');
+                
+                // 更新标签页状态
+                document.querySelectorAll('#previewTabs button').forEach(tab => {
+                    tab.classList.remove('border-primary', 'text-primary');
+                    tab.classList.add('border-transparent', 'hover:text-gray-600', 'hover:border-gray-300');
+                    tab.setAttribute('aria-selected', 'false');
+                });
+                
+                e.target.classList.remove('border-transparent', 'hover:text-gray-600', 'hover:border-gray-300');
+                e.target.classList.add('border-primary', 'text-primary');
+                e.target.setAttribute('aria-selected', 'true');
+                
+                // 更新内容显示
+                document.querySelectorAll('.tab-pane').forEach(pane => {
+                    pane.classList.add('hidden');
+                });
+                
+                document.getElementById(tabId).classList.remove('hidden');
+            }
+        });
+        
+        // 处理按钮点击
+        processBtn.addEventListener('click', processFiles);
+        
+        // 重置按钮点击
+        resetBtn.addEventListener('click', resetAll);
+        
+        // 下载按钮点击
+        downloadBtn.addEventListener('click', downloadResult);
+        
+        // 关闭通知
+        closeNotification.addEventListener('click', hideNotification);
+        
+        // 处理源文件
+        function handleSourceFile(file) {
+            // 检查文件类型
+            const allowedTypes = ['text/plain', 'application/xml', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/pdf'];
+            const allowedExtensions = ['.txt', '.xml', '.doc', '.docx', '.pdf'];
+            
+            const fileExtension = file.name.toLowerCase().substr(file.name.lastIndexOf('.'));
+            
+            if (!allowedExtensions.includes(fileExtension) && !allowedTypes.includes(file.type)) {
+                showNotification('错误', '不支持的文件格式，请上传 .txt, .xml, .doc, .docx 或 .pdf 文件', 'error');
+                addLog(`尝试上传不支持的源文件格式: ${file.name}`);
+                return;
+            }
+            
+            sourceFile = file;
+            sourceFileName.textContent = file.name;
+            sourceFileInfo.classList.remove('hidden');
+            
+            addLog(`源文件已上传: ${file.name}`);
+            
+            // 读取文件内容并提取20位数字
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                try {
+                    const content = e.target.result;
+                    extract20DigitNumber(content);
+                } catch (error) {
+                    showNotification('错误', '读取文件内容失败', 'error');
+                    addLog(`读取源文件失败: ${error.message}`);
+                }
+            };
+            
+            reader.onerror = function() {
+                showNotification('错误', '文件读取失败', 'error');
+                addLog(`文件读取错误: ${reader.error}`);
+            };
+            
+            // 根据文件类型选择读取方式
+            if (file.type === 'text/plain' || file.type === 'application/xml' || fileExtension === '.txt' || fileExtension === '.xml') {
+                reader.readAsText(file);
+            } else {
+                // 对于二进制文件（如PDF、DOC等），我们尝试读取为文本，这可能不完美
+                // 在实际应用中，可能需要使用专门的库来处理这些格式
+                reader.readAsText(file);
+                addLog('注意: 对于非文本文件，数字提取可能不准确');
+            }
+        }
+        
+        // 处理模板文件
+        function handleTemplateFile(file) {
+            // 检查文件类型
+            if (file.type !== 'application/xml' && !file.name.toLowerCase().endsWith('.xml')) {
+                showNotification('错误', '模板文件必须是XML格式', 'error');
+                addLog(`尝试上传非XML模板文件: ${file.name}`);
+                return;
+            }
+            
+            templateFile = file;
+            templateFileName.textContent = file.name;
+            templateFileInfo.classList.remove('hidden');
+            
+            addLog(`模板文件已上传: ${file.name}`);
+            
+            // 读取文件内容并显示预览
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                try {
+                    const content = e.target.result;
+                    displayTemplatePreview(content);
+                } catch (error) {
+                    showNotification('错误', '读取模板文件失败', 'error');
+                    addLog(`读取模板文件失败: ${error.message}`);
+                }
+            };
+            
+            reader.onerror = function() {
+                showNotification('错误', '模板文件读取失败', 'error');
+                addLog(`模板文件读取错误: ${reader.error}`);
+            };
+            
+            reader.readAsText(file);
+        }
+        
+        // 提取20位数字
+        function extract20DigitNumber(content) {
+            // 使用正则表达式查找所有20位连续数字
+            const regex = /\b\d{20}\b/g;
+            const matches = content.match(regex);
+            
+            if (matches && matches.length > 0) {
+                // 保存所有找到的20位数字
+                extractedNumbers = matches;
+                extractedNumberInput.value = matches.join(', ');
+                
+                addLog(`成功提取${matches.length}个20位数字: ${matches.join(', ')}`);
+                
+                if (matches.length > 1) {
+                    showNotification('成功', `找到并提取${matches.length}个20位数字，将按顺序替换模板中的数字`, 'success');
+                } else {
+                    showNotification('成功', `已提取20位数字: ${matches[0]}`, 'success');
+                }
+            } else {
+                extractedNumbers = [];
+                extractedNumberInput.value = '';
+                addLog('源文件中未找到20位连续数字');
+                showNotification('警告', '源文件中未找到20位连续数字', 'warning');
+            }
+            
+            updateProcessButtonState();
+        }
+        
+        // 显示模板预览
+        function displayTemplatePreview(content) {
+            templateContent.textContent = content;
+            templateCharCount.textContent = content.length;
+            
+            // 高亮显示模板中的占位符
+            highlightPlaceholders(templateContent);
+            
+            addLog('模板文件内容已加载并显示');
+            updateProcessButtonState();
+        }
+        
+        // 高亮显示占位符
+        function highlightPlaceholders(element) {
+            let html = element.textContent;
+            
+            // 高亮20位数字占位符
+            html = html.replace(/\b\d{20}\b/g, '<span class="bg-yellow-200 px-1 rounded">$&</span>');
+            
+            // 高亮CorpOrderID占位符
+            html = html.replace(/CorpOrderID="([^"]*)"/g, '<span class="bg-blue-200 px-1 rounded">CorpOrderID="$1"</span>');
+            
+            // 高亮ActDate占位符
+            html = html.replace(/ActDate="([^"]*)"/g, '<span class="bg-green-200 px-1 rounded">ActDate="$1"</span>');
+            
+            // 高亮单号占位符
+            html = html.replace(/\{单号\}/g, '<span class="bg-blue-200 px-1 rounded">$&</span>');
+            html = html.replace(/\{documentNumber\}/g, '<span class="bg-blue-200 px-1 rounded">$&</span>');
+            
+            // 高亮日期占位符
+            html = html.replace(/\{日期\}/g, '<span class="bg-green-200 px-1 rounded">$&</span>');
+            html = html.replace(/\{date\}/g, '<span class="bg-green-200 px-1 rounded">$&</span>');
+            
+            // 高亮时间占位符
+            html = html.replace(/\{时间\}/g, '<span class="bg-purple-200 px-1 rounded">$&</span>');
+            html = html.replace(/\{time\}/g, '<span class="bg-purple-200 px-1 rounded">$&</span>');
+            
+            element.innerHTML = html;
+        }
+        
+        // 处理文件并生成新文件
+        function processFiles() {
+            // 验证所有必填项
+            if (!sourceFile) {
+                showNotification('错误', '请上传源文件', 'error');
+                return;
+            }
+            
+            if (!templateFile) {
+                showNotification('错误', '请上传模板文件', 'error');
+                return;
+            }
+            
+            if (extractedNumbers.length === 0) {
+                showNotification('错误', '未提取到20位数字', 'error');
+                return;
+            }
+            
+            const documentNumber = documentNumberInput.value.trim();
+            if (!documentNumber) {
+                showNotification('错误', '请输入单号', 'error');
+                documentNumberInput.focus();
+                return;
+            }
+            
+            const documentDate = documentDateInput.value;
+            if (!documentDate) {
+                showNotification('错误', '请选择日期', 'error');
+                documentDateInput.focus();
+                return;
+            }
+            
+            const documentTime = documentTimeInput.value;
+            if (!documentTime) {
+                showNotification('错误', '请选择时间', 'error');
+                documentTimeInput.focus();
+                return;
+            }
+            
+            addLog('开始处理文件...');
+            
+            // 读取模板文件内容
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                try {
+                    let templateContent = e.target.result;
+                    
+                    // 组合日期和时间
+                    const dateTime = `${documentDate} ${documentTime}`;
+                    
+                    // 匹配Data节点
+                    const dataNodeRegex = /<Data\s+[^>]*\/>/g;
+                    const dataNodes = templateContent.match(dataNodeRegex) || [];
+                    
+                    if (dataNodes.length > 0) {
+                        addLog(`找到${dataNodes.length}个Data节点`);
+                        
+                        // 全新的简化实现：直接替换所有Data节点
+                        let adjustedContent = templateContent;
+                        
+                        addLog(`=== 开始Data节点处理 ===`);
+                        addLog(`源文件提取的数字数量: ${extractedNumbers.length}`);
+                        addLog(`模板中找到的Data节点数量: ${dataNodes.length}`);
+                        
+                        // 检查是否有Data节点
+                        if (dataNodes.length === 0) {
+                            addLog('错误: 模板中没有找到Data节点');
+                            showNotification('错误', '模板中没有找到Data节点', 'error');
+                            return;
+                        }
+                        
+                        // 获取第一个Data节点作为模板
+                        const dataNodeTemplate = dataNodes[0];
+                        addLog(`使用模板节点: ${dataNodeTemplate.trim()}`);
+                        
+                        // 生成新的Data节点字符串
+                        let newDataNodes = '';
+                        for (let i = 0; i < extractedNumbers.length; i++) {
+                            // 使用模板创建新节点，替换Code属性
+                            const newNode = dataNodeTemplate.replace(/Code="[^"]*"/, `Code="${extractedNumbers[i]}"`);
+                            newDataNodes += newNode;
+                            
+                            // 如果不是最后一个节点，添加换行符
+                            if (i < extractedNumbers.length - 1) {
+                                newDataNodes += '\n';
+                            }
+                            
+                            addLog(`创建节点 ${i+1}/${extractedNumbers.length}: ${newNode.trim()}`);
+                        }
+                        
+                        // 直接替换所有现有的Data节点
+                        const dataNodeRegex = /<Data\s+[^>]*\/>/g;
+                        const allDataNodes = templateContent.match(dataNodeRegex);
+                        
+                        if (allDataNodes && allDataNodes.length > 0) {
+                            addLog(`找到${allDataNodes.length}个Data节点，准备替换`);
+                            
+                            // 当模板数据行数大于源文件时，先删除多余的行
+                            if (allDataNodes.length > extractedNumbers.length) {
+                                addLog(`模板节点数量(${allDataNodes.length})大于源文件数字数量(${extractedNumbers.length})，需要先删除${allDataNodes.length - extractedNumbers.length}个节点`);
+                                
+                                // 首先删除多余的ActDate开头的行
+                                let tempContent = templateContent;
+                                const actDateLines = tempContent.match(/^\s*ActDate.*$/gm) || [];
+                                if (actDateLines.length > extractedNumbers.length) {
+                                    const linesToDelete = actDateLines.length - extractedNumbers.length;
+                                    addLog(`找到${actDateLines.length}个ActDate行，需要删除${linesToDelete}个多余的ActDate行`);
+                                    
+                                    // 删除多余的ActDate行
+                                    for (let i = 0; i < linesToDelete; i++) {
+                                        const lastActDateIndex = tempContent.lastIndexOf(actDateLines[actDateLines.length - 1 - i]);
+                                        if (lastActDateIndex !== -1) {
+                                            const lineEndIndex = tempContent.indexOf('\n', lastActDateIndex);
+                                            if (lineEndIndex !== -1) {
+                                                tempContent = tempContent.substring(0, lastActDateIndex) + tempContent.substring(lineEndIndex + 1);
+                                            } else {
+                                                tempContent = tempContent.substring(0, lastActDateIndex);
+                                            }
+                                            addLog(`已删除多余的ActDate行: ${actDateLines[actDateLines.length - 1 - i].trim()}`);
+                                        }
+                                    }
+                                }
+                                
+                                // 只保留需要的节点（从开始保留到源文件数量）
+                                const keptDataNodes = allDataNodes.slice(0, extractedNumbers.length);
+                                addLog(`保留前${extractedNumbers.length}个Data节点`);
+                                
+                                // 找到第一个和最后一个要保留的Data节点的位置
+                                const firstNodeIndex = tempContent.indexOf(keptDataNodes[0]);
+                                const lastNodeIndex = tempContent.lastIndexOf(keptDataNodes[keptDataNodes.length - 1]) + keptDataNodes[keptDataNodes.length - 1].length;
+                                
+                                // 提取前后内容
+                                const contentBefore = tempContent.substring(0, firstNodeIndex);
+                                const contentAfter = tempContent.substring(lastNodeIndex);
+                                
+                                // 构建临时内容（删除多余节点后的内容）
+                                const tempContent2 = contentBefore + keptDataNodes.join('\n') + contentAfter;
+                                
+                                // 在临时内容的基础上进行替换
+                                const tempFirstNodeIndex = tempContent2.indexOf(keptDataNodes[0]);
+                                const tempLastNodeIndex = tempContent2.lastIndexOf(keptDataNodes[keptDataNodes.length - 1]) + keptDataNodes[keptDataNodes.length - 1].length;
+                                
+                                const tempContentBefore = tempContent2.substring(0, tempFirstNodeIndex);
+                                const tempContentAfter = tempContent2.substring(tempLastNodeIndex);
+                                
+                                adjustedContent = tempContentBefore + newDataNodes + tempContentAfter;
+                                addLog(`成功删除多余节点并替换为新节点`);
+                            } else {
+                                // 正常替换流程
+                                // 找到第一个和最后一个Data节点的位置
+                                const firstNodeIndex = templateContent.indexOf(allDataNodes[0]);
+                                const lastNodeIndex = templateContent.lastIndexOf(allDataNodes[allDataNodes.length - 1]) + allDataNodes[allDataNodes.length - 1].length;
+                                
+                                // 提取前后内容
+                                const contentBefore = templateContent.substring(0, firstNodeIndex);
+                                const contentAfter = templateContent.substring(lastNodeIndex);
+                                
+                                // 构建新内容
+                                adjustedContent = contentBefore + newDataNodes + contentAfter;
+                                addLog(`成功替换所有Data节点`);
+                            }
+                        } else {
+                            addLog('错误: 无法找到Data节点进行替换');
+                            showNotification('错误', '无法找到Data节点进行替换', 'error');
+                            return;
+                        }
+                        
+                        addLog(`=== Data节点处理完成 ===`);
+                        addLog(`新文件中Data节点数量: ${extractedNumbers.length}`);
+                        
+                        // 更新内容
+                        templateContent = adjustedContent;
+                        
+                        // 重新获取调整后的Data节点
+                        const adjustedDataNodes = templateContent.match(dataNodeRegex) || [];
+                        addLog(`调整后共有${adjustedDataNodes.length}个Data节点`);
+                        
+                        // V15: 按源文件数组一一对应替换，避免数字重复使用
+                        let updatedContent = templateContent;
+                        
+                        // 确保Data节点数量与源文件数字数量完全一致
+                        const nodesToProcess = Math.min(adjustedDataNodes.length, extractedNumbers.length);
+                        addLog(`V15: 准备一一对应替换${nodesToProcess}个Data节点`);
+                        
+                        for (let i = 0; i < nodesToProcess; i++) {
+                            const node = adjustedDataNodes[i];
+                            const newNode = node
+                                .replace(/Code="\d{20}"/, `Code="${extractedNumbers[i]}"`) // 直接使用索引，不循环
+                                .replace(/CorpOrderID="([^"]*)"/, `CorpOrderID="${documentNumber}"`)
+                                .replace(/ActDate="([^"]*)"/, `ActDate="${dateTime}"`);
+                            
+                            updatedContent = updatedContent.replace(node, newNode);
+                            addLog(`V15: 已更新第${i + 1}个Data节点: Code="${extractedNumbers[i]}", CorpOrderID="${documentNumber}", ActDate="${dateTime}"`);
+                        }
+                        
+                        // 如果Data节点数量超过源文件数字数量，删除多余的节点
+                        if (adjustedDataNodes.length > extractedNumbers.length) {
+                            const nodesToDelete = adjustedDataNodes.length - extractedNumbers.length;
+                            addLog(`V15: Data节点数量(${adjustedDataNodes.length})超过源文件数字数量(${extractedNumbers.length})，需要删除${nodesToDelete}个多余节点`);
+                            
+                            for (let i = adjustedDataNodes.length - 1; i >= extractedNumbers.length; i--) {
+                                updatedContent = updatedContent.replace(adjustedDataNodes[i], '');
+                                addLog(`V15: 已删除多余的Data节点 #${i + 1}`);
+                            }
+                            
+                            // 清理空行
+                            updatedContent = updatedContent.replace(/\n\s*\n/g, '\n');
+                        }
+                        
+                        templateContent = updatedContent;
+                    } else {
+                        // 如果没有找到Data节点，使用原来的替换逻辑
+                        addLog('未找到Data节点，使用传统替换方式');
+                        
+                        // 替换20位数字（按顺序替换所有找到的数字）
+                        const numberRegex = /\b\d{20}\b/g;
+                        const templateNumbers = templateContent.match(numberRegex) || [];
+                        
+                        if (templateNumbers.length > 0) {
+                            let currentIndex = 0;
+                            templateContent = templateContent.replace(numberRegex, (match) => {
+                                const replacement = extractedNumbers[currentIndex % extractedNumbers.length];
+                                addLog(`已替换模板中的20位数字: ${match} -> ${replacement}`);
+                                currentIndex++;
+                                return replacement;
+                            });
+                        } else {
+                            addLog('警告: 模板文件中未找到20位数字占位符');
+                        }
+                        
+                        // 替换CorpOrderID
+                        const corpOrderIdRegex = /CorpOrderID="([^"]*)"/g;
+                        if (corpOrderIdRegex.test(templateContent)) {
+                            templateContent = templateContent.replace(corpOrderIdRegex, `CorpOrderID="${documentNumber}"`);
+                            addLog(`已替换CorpOrderID为: ${documentNumber}`);
+                        } else {
+                            addLog('警告: 模板文件中未找到CorpOrderID属性');
+                        }
+                        
+                        // 替换ActDate
+                        const actDateRegex = /ActDate="([^"]*)"/g;
+                        if (actDateRegex.test(templateContent)) {
+                            templateContent = templateContent.replace(actDateRegex, `ActDate="${dateTime}"`);
+                            addLog(`已替换ActDate为: ${dateTime}`);
+                        } else {
+                            addLog('警告: 模板文件中未找到ActDate属性');
+                        }
+                    }
+                    
+                    // 保留原有的替换逻辑以兼容旧模板
+                    templateContent = templateContent.replace(/\{单号\}/g, documentNumber);
+                    templateContent = templateContent.replace(/\{documentNumber\}/g, documentNumber);
+                    templateContent = templateContent.replace(/\{日期\}/g, documentDate);
+                    templateContent = templateContent.replace(/\{date\}/g, documentDate);
+                    templateContent = templateContent.replace(/\{时间\}/g, documentTime);
+                    templateContent = templateContent.replace(/\{time\}/g, documentTime);
+                    
+                    // 自动计算并更新TotalCount
+                    const totalCountRegex = /<TotalCount>\d+<\/TotalCount>/g;
+                    if (totalCountRegex.test(templateContent)) {
+                        const totalCount = extractedNumbers.length;
+                        templateContent = templateContent.replace(totalCountRegex, `<TotalCount>${totalCount}</TotalCount>`);
+                        addLog(`已自动更新TotalCount为: ${totalCount}`);
+                    } else {
+                        addLog('未找到TotalCount标签，跳过自动更新');
+                    }
+                    
+                    // 保存结果
+                    resultXml = templateContent;
+                    
+                    // 显示结果预览
+                    displayResultPreview(templateContent);
+                    
+                    // 显示下载区域
+                    downloadSection.classList.remove('hidden');
+                    
+                    // 切换到结果标签页
+                    document.getElementById('result-tab').click();
+                    
+                    addLog('文件处理完成，新文件已生成');
+                    showNotification('成功', '文件处理完成，新文件已生成', 'success');
+                    
+                } catch (error) {
+                    showNotification('错误', '处理文件时发生错误', 'error');
+                    addLog(`处理文件失败: ${error.message}`);
+                }
+            };
+            
+            reader.onerror = function() {
+                showNotification('错误', '读取模板文件失败', 'error');
+                addLog(`读取模板文件错误: ${reader.error}`);
+            };
+            
+            reader.readAsText(templateFile);
+        }
+        
+        // 显示结果预览
+        function displayResultPreview(content) {
+            resultContent.textContent = content;
+            resultCharCount.textContent = content.length;
+            
+            // 高亮显示替换后的内容
+            highlightReplacedContent(resultContent);
+        }
+        
+        // 高亮显示替换后的内容
+        function highlightReplacedContent(element) {
+            let html = element.textContent;
+            
+            // 高亮替换后的所有20位数字
+            extractedNumbers.forEach(number => {
+                html = html.replace(new RegExp(`\\b${number}\\b`, 'g'), '<span class="bg-yellow-100 px-1 rounded font-bold">$&</span>');
+            });
+            
+            // 高亮替换后的CorpOrderID
+            const documentNumber = documentNumberInput.value.trim();
+            if (documentNumber) {
+                html = html.replace(new RegExp(`CorpOrderID="${escapeRegExp(documentNumber)}"`, 'g'), '<span class="bg-blue-100 px-1 rounded font-bold">CorpOrderID="${documentNumber}"</span>');
+            }
+            
+            // 高亮替换后的ActDate
+            const documentDate = documentDateInput.value;
+            const documentTime = documentTimeInput.value;
+            if (documentDate && documentTime) {
+                const dateTime = `${documentDate} ${documentTime}`;
+                html = html.replace(new RegExp(`ActDate="${escapeRegExp(dateTime)}"`, 'g'), '<span class="bg-green-100 px-1 rounded font-bold">ActDate="${dateTime}"</span>');
+            }
+            
+            // 高亮替换后的单号（直接文本）
+            if (documentNumber) {
+                html = html.replace(new RegExp(`\\b${escapeRegExp(documentNumber)}\\b`, 'g'), '<span class="bg-blue-100 px-1 rounded font-bold">$&</span>');
+            }
+            
+            // 高亮替换后的日期（直接文本）
+            if (documentDate) {
+                html = html.replace(new RegExp(`\\b${documentDate}\\b`, 'g'), '<span class="bg-green-100 px-1 rounded font-bold">$&</span>');
+            }
+            
+            // 高亮替换后的时间（直接文本）
+            if (documentTime) {
+                html = html.replace(new RegExp(`\\b${documentTime}\\b`, 'g'), '<span class="bg-purple-100 px-1 rounded font-bold">$&</span>');
+            }
+            
+            element.innerHTML = html;
+        }
+        
+        // 下载结果文件
+        function downloadResult() {
+            if (!resultXml) {
+                showNotification('错误', '没有可下载的内容', 'error');
+                return;
+            }
+            
+            // 创建Blob对象
+            const blob = new Blob([resultXml], { type: 'application/xml' });
+            
+            // 创建下载链接
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            
+            // 生成文件名：单号内容+当天日期（数字格式）
+            const documentNumber = documentNumberInput.value.trim() || 'new';
+            
+            // 获取当天日期并格式化为YYYYMMDD
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            const todayDateStr = `${year}${month}${day}`;
+            
+            a.download = `${documentNumber}${todayDateStr}.xml`;
+            
+            // 触发下载
+            document.body.appendChild(a);
+            a.click();
+            
+            // 清理
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 0);
+            
+            addLog(`文件已下载: ${a.download}`);
+        }
+        
+        // 重置所有内容
+        function resetAll() {
+            // 重置文件
+            sourceFile = null;
+            templateFile = null;
+            extractedNumbers = [];
+            resultXml = '';
+            
+            // 重置文件输入
+            sourceFileInput.value = '';
+            templateFileInput.value = '';
+            
+            // 重置文件信息显示
+            sourceFileInfo.classList.add('hidden');
+            templateFileInfo.classList.add('hidden');
+            
+            // 重置表单输入
+            extractedNumberInput.value = '';
+            documentNumberInput.value = '';
+            documentDateInput.value = `${year}-${month}-${day}`;
+            documentTimeInput.value = `${hours}:${minutes}`;
+            
+            // 重置预览
+            templateContent.innerHTML = `
+                <div class="flex items-center justify-center h-full text-secondary">
+                    <div class="text-center">
+                        <i class="fa fa-file-code-o text-3xl mb-2"></i>
+                        <p>上传模板文件后将显示内容预览</p>
+                    </div>
+                </div>
+            `;
+            templateCharCount.textContent = '0';
+            
+            resultContent.innerHTML = `
+                <div class="flex items-center justify-center h-full text-secondary">
+                    <div class="text-center">
+                        <i class="fa fa-magic text-3xl mb-2"></i>
+                        <p>点击"生成新文件"后将显示结果预览</p>
+                    </div>
+                </div>
+            `;
+            resultCharCount.textContent = '0';
+            
+            // 隐藏下载区域
+            downloadSection.classList.add('hidden');
+            
+            // 切换到模板标签页
+            document.getElementById('template-tab').click();
+            
+            addLog('已重置所有内容');
+            updateProcessButtonState();
+            showNotification('成功', '已重置所有内容', 'success');
+        }
+        
+        // 更新处理按钮状态
+        function updateProcessButtonState() {
+            if (sourceFile && templateFile && extractedNumbers.length > 0) {
+                processBtn.disabled = false;
+                processBtn.classList.remove('bg-gray-300', 'cursor-not-allowed');
+                processBtn.classList.add('bg-primary', 'hover:bg-blue-700');
+            } else {
+                processBtn.disabled = true;
+                processBtn.classList.remove('bg-primary', 'hover:bg-blue-700');
+                processBtn.classList.add('bg-gray-300', 'cursor-not-allowed');
+            }
+        }
+        
+        // 添加日志
+        function addLog(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = 'mb-1';
+            logEntry.innerHTML = `<span class="text-primary">[${timestamp}]</span> ${message}`;
+            
+            // 清除初始提示
+            if (logContainer.querySelector('.italic')) {
+                logContainer.innerHTML = '';
+            }
+            
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+        
+        // 显示通知
+        function showNotification(title, message, type = 'info') {
+            // 设置通知类型
+            switch (type) {
+                case 'success':
+                    notificationIcon.className = 'fa fa-check-circle text-success text-xl';
+                    notificationTitle.className = 'text-sm font-medium text-success';
+                    break;
+                case 'error':
+                    notificationIcon.className = 'fa fa-exclamation-circle text-danger text-xl';
+                    notificationTitle.className = 'text-sm font-medium text-danger';
+                    break;
+                case 'warning':
+                    notificationIcon.className = 'fa fa-exclamation-triangle text-warning text-xl';
+                    notificationTitle.className = 'text-sm font-medium text-warning';
+                    break;
+                default:
+                    notificationIcon.className = 'fa fa-info-circle text-primary text-xl';
+                    notificationTitle.className = 'text-sm font-medium text-primary';
+            }
+            
+            // 设置通知内容
+            notificationTitle.textContent = title;
+            notificationMessage.textContent = message;
+            
+            // 显示通知
+            notification.classList.remove('translate-y-full', 'opacity-0');
+            
+            // 3秒后自动隐藏
+            clearTimeout(notification.timeout);
+            notification.timeout = setTimeout(hideNotification, 5000);
+        }
+        
+        // 隐藏通知
+        function hideNotification() {
+            notification.classList.add('translate-y-full', 'opacity-0');
+        }
+        
+        // 转义正则表达式特殊字符
+        function escapeRegExp(string) {
+            return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+    </script>
+</body>
 </html>
