@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Document>
+    <DataList>
+        <Data Code="11111111111111111111" CorpOrderID="ORDER-001" ActDate="2026-02-03 10:00:00"/>
+        <Data Code="22222222222222222222" CorpOrderID="ORDER-001" ActDate="2026-02-03 10:00:00"/>
+        <Data Code="33333333333333333333" CorpOrderID="ORDER-001" ActDate="2026-02-03 10:00:00"/>
+        <Data Code="44444444444444444444" CorpOrderID="ORDER-001" ActDate="2026-02-03 10:00:00"/>
+        <Data Code="55555555555555555555" CorpOrderID="ORDER-001" ActDate="2026-02-03 10:00:00"/>
+    </DataList>
+    <Footer>
+        <TotalCount>5</TotalCount>
+    </Footer>
+</Document>
