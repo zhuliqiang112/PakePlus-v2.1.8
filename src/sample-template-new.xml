@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document>
+    <header>
+        <title>测试文档模板</title>
+        <CorpOrderID>ZJDB1012002222</CorpOrderID>
+        <ActDate>2025-01-16 15:33:21</ActDate>
+    </header>
+    
+    <content>
+        <section>
+            <title>基本信息</title>
+            <data>
+                <field name="referenceNumber">12345678901234567890</field>
+                <field name="documentType">测试文档</field>
+                <field name="status">草稿</field>
+            </data>
+        </section>
+        
+        <section>
+            <title>详细信息</title>
+            <items>
+                <item>
+                    <id>1</id>
+                    <description>测试项目1</description>
+                    <value>100.00</value>
+                </item>
+                <item>
+                    <id>2</id>
+                    <description>测试项目2</description>
+                    <value>200.00</value>
+                </item>
+            </items>
+        </section>
+        
+        <section>
+            <title>元数据</title>
+            <metadata>
+                <createdBy>系统自动生成</createdBy>
+                <CorpOrderID>ZJDB1012002222</CorpOrderID>
+                <ActDate>2025-01-16 15:33:21</ActDate>
+                <uniqueIdentifier>12345678901234567890</uniqueIdentifier>
+            </metadata>
+        </section>
+    </content>
+    
+    <footer>
+        <note>本文件由XML文件处理器生成</note>
+        <CorpOrderID>ZJDB1012002222</CorpOrderID>
+        <ActDate>2025-01-16 15:33:21</ActDate>
+        <checksum>12345678901234567890</checksum>
+    </footer>
+</document>
