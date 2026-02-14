@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document>
+    <header>
+        <title>多数字测试文档模板</title>
+        <CorpOrderID>MULTI-2025-001</CorpOrderID>
+        <ActDate>2025-07-21 10:15:30</ActDate>
+    </header>
+    
+    <content>
+        <section>
+            <title>数字组1</title>
+            <data>
+                <field name="number1">12345678901234567890</field>
+                <field name="number2">12345678901234567890</field>
+                <field name="number3">12345678901234567890</field>
+            </data>
+        </section>
+        
+        <section>
+            <title>数字组2</title>
+            <data>
+                <field name="number4">12345678901234567890</field>
+                <field name="number5">12345678901234567890</field>
+                <field name="number6">12345678901234567890</field>
+            </data>
+        </section>
+        
+        <section>
+            <title>元数据</title>
+            <metadata>
+                <createdBy>系统自动生成</createdBy>
+                <CorpOrderID>MULTI-2025-001</CorpOrderID>
+                <ActDate>2025-07-21 10:15:30</ActDate>
+                <uniqueIdentifier>12345678901234567890</uniqueIdentifier>
+                <checksum1>12345678901234567890</checksum1>
+                <checksum2>12345678901234567890</checksum2>
+            </metadata>
+        </section>
+    </content>
+    
+    <footer>
+        <note>本文件由XML文件处理器生成</note>
+        <CorpOrderID>MULTI-2025-001</CorpOrderID>
+        <ActDate>2025-07-21 10:15:30</ActDate>
+        <finalChecksum>12345678901234567890</finalChecksum>
+    </footer>
+</document>
