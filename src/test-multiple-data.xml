@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Document>
+    <Header>
+        <Version>1.0</Version>
+        <Type>DataFile</Type>
+        <CorpOrderID="TEMPLATE-ORDER-001"/>
+        <ActDate="2026-02-03 10:00:00"/>
+    </Header>
+    <DataList>
+        <Data Code="84498750016929653790" Actor="ZOUWF" ActDate="2026-02-03 11:33:27" OwnerID="" FromCorpID="" ToCorpID="" CorpProductID="" CorpBatchNo="" ProduceDate="" CorpOrderID="XSCKD1001010314"/>
+        <Data Code="12345678901234567890" Actor="ZOUWF" ActDate="2026-02-03 11:33:27" OwnerID="" FromCorpID="" ToCorpID="" CorpProductID="" CorpBatchNo="" ProduceDate="" CorpOrderID="XSCKD1001010314"/>
+        <Data Code="23456789012345678901" Actor="ZOUWF" ActDate="2026-02-03 11:33:27" OwnerID="" FromCorpID="" ToCorpID="" CorpProductID="" CorpBatchNo="" ProduceDate="" CorpOrderID="XSCKD1001010314"/>
+    </DataList>
+    <Footer>
+        <TotalCount>3</TotalCount>
+        <CheckSum>ABC123</CheckSum>
+    </Footer>
+</Document>
