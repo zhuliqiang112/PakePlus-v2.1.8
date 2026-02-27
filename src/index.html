@@ -1,11 +1,1623 @@
 <!DOCTYPE html>
-<html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>PakePlus</title>
-    </head>
-    <body>
-        Hello World
-    </body>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>综合库物料批号生成器 - V7</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1e40af',
+                        secondary: '#3b82f6',
+                        accent: '#60a5fa',
+                        neutral: '#f3f4f6',
+                        'neutral-dark': '#9ca3af'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif']
+                    },
+                    boxShadow: {
+                        'inner-light': 'inset 0 2px 4px 0 rgba(255, 255, 255, 0.06)'
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .input-focus {
+                @apply focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200;
+            }
+            .batch-appear {
+                animation: fadeIn 0.3s ease-in-out;
+            }
+            .copy-button-hover {
+                @apply hover:bg-primary hover:text-white transition-all duration-200;
+            }
+            .row-highlight {
+                @apply bg-blue-50 transition-all duration-300;
+            }
+            .version-badge {
+                @apply absolute top-2 right-2 bg-primary text-white text-xs px-2 py-1 rounded-full font-medium;
+            }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #c5c5c5;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a0a0a0;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen font-sans">
+    <div class="container mx-auto px-4 py-8 max-w-6xl relative">
+        <!-- 版本标识 -->
+        <div class="version-badge">V7</div>
+        
+        <!-- 头部 -->
+        <header class="mb-8">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div>
+                    <h1 class="text-3xl font-bold text-primary mb-2">综合库物料批号生成器</h1>
+                    <p class="text-neutral-dark">自动生成唯一的产品批号，提高工作效率 | V7增强版</p>
+                </div>
+                <div class="mt-4 md:mt-0 bg-white rounded-lg shadow-md p-4 flex items-center space-x-4">
+                    <div class="text-center">
+                        <p class="text-sm text-neutral-dark">当前日期</p>
+                        <p id="current-date" class="text-xl font-semibold text-primary"></p>
+                    </div>
+                    <div class="h-8 border-r border-gray-200"></div>
+                    <div class="text-center">
+                        <p class="text-sm text-neutral-dark">今日生成批号总数</p>
+                        <p id="total-batches" class="text-xl font-semibold text-primary">0</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- V7新增：单据号和前缀设置 -->
+            <div class="mt-6 bg-white rounded-lg shadow-md p-4 flex flex-wrap gap-4 items-center">
+                <div class="flex-1 min-w-[200px]">
+                    <label for="document-number" class="block text-sm font-medium text-gray-700 mb-1">单据号（选填）</label>
+                    <input type="text" id="document-number" placeholder="输入单据号（选填）" 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none input-focus">
+                    <p class="text-xs text-gray-500 mt-1">填写后下载文件名将使用此单据号+年月日命名</p>
+                </div>
+                <div class="flex-1 min-w-[200px]">
+                    <label for="batch-prefix" class="block text-sm font-medium text-gray-700 mb-1">批号前缀（选填）</label>
+                    <input type="text" id="batch-prefix" placeholder="输入批号前缀（如：WH-、PD-等）" 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none input-focus">
+                    <p class="text-xs text-gray-500 mt-1">生成的批号将自动添加此前缀，如：前缀+日期+序号</p>
+                </div>
+                <div class="flex items-end">
+                    <button id="reset-custom-settings" class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors text-sm">
+                        <i class="fa fa-refresh mr-1"></i> 清空设置
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- 本地使用提示 -->
+        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+            <div class="flex items-start">
+                <i class="fa fa-exclamation-triangle text-yellow-500 mt-1 mr-3 text-lg"></i>
+                <div>
+                    <h4 class="font-medium text-yellow-800">V7版本使用提示</h4>
+                    <p class="text-sm text-yellow-700 mt-1">
+                        1. 文件导入功能：推荐使用HTTP服务器运行（详见说明）；也可使用下方"手动粘贴物料编码"功能替代<br>
+                        2. 数据保存：所有输入和计数会自动保存，刷新/关闭页面后重新打开可恢复<br>
+                        3. V7新增：单据号自定义（选填）、批号前缀自定义、下载文件名优化
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 手动粘贴物料编码区域 -->
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <h4 class="font-medium text-blue-800 mb-2">手动粘贴物料编码（V7推荐）</h4>
+            <div class="flex flex-col space-y-3">
+                <textarea id="manual-paste-area" class="w-full h-32 px-3 py-2 border border-gray-300 rounded-md focus:outline-none input-focus" placeholder="请粘贴从Excel/Word复制的物料编码列表，每行一个编码..."></textarea>
+                <div class="flex items-center space-x-3">
+                    <button id="paste-to-table" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors flex items-center">
+                        <i class="fa fa-paste mr-2"></i>导入到表格
+                    </button>
+                    <button id="clear-paste-area" class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors flex items-center text-sm">
+                        <i class="fa fa-times mr-2"></i>清空粘贴区
+                    </button>
+                    <span id="paste-count" class="text-sm text-gray-500">0个物料编码</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主内容区 -->
+        <main class="bg-white rounded-xl shadow-lg overflow-hidden">
+            <!-- 工具栏 -->
+            <div class="bg-gray-50 border-b border-gray-200 px-6 py-4">
+                <div class="flex flex-wrap justify-between items-center mb-4">
+                    <div class="flex items-center space-x-4">
+                        <button id="clear-all" class="px-4 py-2 bg-red-50 text-red-600 rounded hover:bg-red-100 transition-colors flex items-center">
+                            <i class="fa fa-trash-o mr-2"></i>清空全部
+                        </button>
+                        <button id="export-data" class="px-4 py-2 bg-green-50 text-green-600 rounded hover:bg-green-100 transition-colors flex items-center">
+                            <i class="fa fa-download mr-2"></i>导出数据
+                        </button>
+                        <div class="relative inline-block">
+                            <button id="import-data" class="px-4 py-2 bg-purple-50 text-purple-600 rounded hover:bg-purple-100 transition-colors flex items-center">
+                                <i class="fa fa-upload mr-2"></i>导入Excel
+                            </button>
+                            <input type="file" id="file-input" accept=".xlsx,.xls,.csv" class="absolute inset-0 opacity-0 cursor-pointer">
+                        </div>
+                        <button id="save-data-manual" class="px-4 py-2 bg-orange-50 text-orange-600 rounded hover:bg-orange-100 transition-colors flex items-center">
+                            <i class="fa fa-save mr-2"></i>手动保存
+                        </button>
+                        <button id="backup-data" class="px-4 py-2 bg-indigo-50 text-indigo-600 rounded hover:bg-indigo-100 transition-colors flex items-center">
+                            <i class="fa fa-database mr-2"></i>数据备份
+                        </button>
+                    </div>
+                    <div class="mt-3 sm:mt-0">
+                        <div class="relative">
+                            <input type="text" id="search-input" placeholder="搜索物料编码..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none input-focus">
+                            <i class="fa fa-search absolute left-3 top-3 text-gray-400"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 次数预设功能 -->
+                <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <h3 class="text-sm font-medium text-blue-800 mb-3">次数预设（V7优化）</h3>
+                    <div class="flex flex-wrap gap-3">
+                        <div class="flex items-center">
+                            <label for="preset-material" class="mr-2 text-sm text-gray-700">物料编码:</label>
+                            <input type="text" id="preset-material" placeholder="输入物料编码" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none input-focus w-40">
+                        </div>
+                        <div class="flex items-center">
+                            <label for="preset-count" class="mr-2 text-sm text-gray-700">预设次数:</label>
+                            <input type="number" id="preset-count" placeholder="输入次数" min="0" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none input-focus w-32">
+                        </div>
+                        <button id="apply-preset" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors flex items-center">
+                            <i class="fa fa-check mr-2"></i>应用预设
+                        </button>
+                    </div>
+                    <p class="text-xs text-blue-600 mt-2">设置指定物料编码的当前计数，新生成的批号将从该次数+1开始 | V7支持批量预设，批号包含自定义前缀</p>
+                </div>
+            </div>
+
+            <!-- 表格区域 -->
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="bg-gray-50 border-b border-gray-200">
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">序号</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">物料编码</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">生成批号（含前缀）</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48">操作（V7增强）</th>
+                        </tr>
+                    </thead>
+                    <tbody id="batch-table-body">
+                        <!-- 动态生成的行将插入这里 -->
+                    </tbody>
+                </table>
+            </div>
+        </main>
+
+        <!-- 统计信息 -->
+        <div class="mt-8 grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div class="bg-white p-6 rounded-xl shadow-md">
+                <h3 class="text-lg font-semibold text-gray-700 mb-4">今日物料统计</h3>
+                <div id="materials-count" class="text-3xl font-bold text-primary">0</div>
+                <p class="text-sm text-gray-500 mt-2">不同物料编码数量</p>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-md">
+                <h3 class="text-lg font-semibold text-gray-700 mb-4">最高重复次数</h3>
+                <div id="max-repeat" class="text-3xl font-bold text-secondary">0</div>
+                <p class="text-sm text-gray-500 mt-2">单个物料最大生成次数</p>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-md">
+                <h3 class="text-lg font-semibold text-gray-700 mb-4">最近活动</h3>
+                <div id="last-activity" class="text-3xl font-bold text-accent">-</div>
+                <p class="text-sm text-gray-500 mt-2">最近一次生成批号时间</p>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-md">
+                <h3 class="text-lg font-semibold text-gray-700 mb-4">数据状态</h3>
+                <div id="data-status" class="text-3xl font-bold text-green-600">✓</div>
+                <p class="text-sm text-gray-500 mt-2">V7自动备份已启用</p>
+            </div>
+        </div>
+
+        <!-- V7更新日志 -->
+        <div class="mt-8 bg-white rounded-xl shadow-lg p-6">
+            <h3 class="text-lg font-semibold text-primary mb-4">V7版本更新日志</h3>
+            <ul class="list-disc pl-5 space-y-2 text-gray-700">
+                <li>新增单据号文本框（选填），填写后下载文件名将使用"单据号+年月日"命名</li>
+                <li>新增批号前缀文本框（选填），生成的批号自动添加自定义前缀</li>
+                <li>优化文件下载命名规则，优先使用单据号，无单据号则使用默认命名</li>
+                <li>新增清空自定义设置按钮，一键清空单据号和前缀</li>
+                <li>优化批号生成逻辑，完美兼容前缀自定义功能</li>
+                <li>增强数据备份功能，包含自定义前缀和单据号信息</li>
+                <li>优化界面布局，新增的设置项更直观易用</li>
+            </ul>
+        </div>
+
+        <!-- 底部信息 -->
+        <footer class="mt-12 text-center text-gray-500 text-sm">
+            <p>© 2026 综合库物料批号生成器@创作者：小强 | V7增强版 | 本地数据安全存储</p>
+        </footer>
+    </div>
+
+    <!-- 复制成功提示 -->
+    <div id="copy-notification" class="fixed bottom-5 right-5 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 flex items-center">
+        <i class="fa fa-check-circle mr-2"></i>
+        <span>批号已复制到剪贴板</span>
+    </div>
+
+    <!-- 引入ExcelJS库 -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 全局变量
+            let batchCounter = {}; // 存储每个物料编码的计数
+            let currentDate = new Date();
+            let formattedDate = formatDate(currentDate);
+            let totalBatches = 0;
+            let materialsSet = new Set();
+            const VERSION = "7.0"; // V7版本标识
+            
+            // DOM 元素
+            const tableBody = document.getElementById('batch-table-body');
+            const currentDateElement = document.getElementById('current-date');
+            const totalBatchesElement = document.getElementById('total-batches');
+            const materialsCountElement = document.getElementById('materials-count');
+            const maxRepeatElement = document.getElementById('max-repeat');
+            const lastActivityElement = document.getElementById('last-activity');
+            const copyNotification = document.getElementById('copy-notification');
+            const clearAllButton = document.getElementById('clear-all');
+            const exportDataButton = document.getElementById('export-data');
+            const searchInput = document.getElementById('search-input');
+            const presetMaterialInput = document.getElementById('preset-material');
+            const presetCountInput = document.getElementById('preset-count');
+            const applyPresetButton = document.getElementById('apply-preset');
+            const importDataButton = document.getElementById('import-data');
+            const fileInput = document.getElementById('file-input');
+            const manualPasteArea = document.getElementById('manual-paste-area');
+            const pasteToTableButton = document.getElementById('paste-to-table');
+            const clearPasteAreaButton = document.getElementById('clear-paste-area');
+            const pasteCountElement = document.getElementById('paste-count');
+            const saveDataManualButton = document.getElementById('save-data-manual');
+            const backupDataButton = document.getElementById('backup-data');
+            const dataStatusElement = document.getElementById('data-status');
+            // V7新增DOM元素
+            const documentNumberInput = document.getElementById('document-number');
+            const batchPrefixInput = document.getElementById('batch-prefix');
+            const resetCustomSettingsButton = document.getElementById('reset-custom-settings');
+
+            // 初始化页面
+            function initializePage() {
+                // 设置当前日期
+                currentDateElement.textContent = formatDateDisplay(currentDate);
+                
+                // 检查本地存储中的数据
+                loadSavedData();
+                
+                // 生成20行输入框
+                generateInputRows();
+                
+                // 更新统计信息
+                updateStatistics();
+                
+                // 设置事件监听器
+                setupEventListeners();
+                
+                // 设置每日重置检查
+                checkDailyReset();
+                
+                // 添加页面卸载前保存数据的事件
+                window.addEventListener('beforeunload', function() {
+                    saveData();
+                });
+
+                // 检测是否为本地文件运行
+                if (window.location.protocol === 'file:') {
+                    showNotification(`V7版本提示：当前为本地文件模式，推荐使用HTTP服务器运行以获得完整功能`, 'blue');
+                }
+                
+                // 更新数据状态
+                updateDataStatus();
+                
+                // 监听粘贴区域内容变化，实时计数
+                manualPasteArea.addEventListener('input', updatePasteCount);
+                
+                // 恢复保存的自定义设置
+                restoreCustomSettings();
+            }
+
+            // V7新增：恢复保存的自定义设置
+            function restoreCustomSettings() {
+                try {
+                    const savedData = localStorage.getItem('batchGeneratorCustomSettings');
+                    if (savedData) {
+                        const settings = JSON.parse(savedData);
+                        if (settings.documentNumber) {
+                            documentNumberInput.value = settings.documentNumber;
+                        }
+                        if (settings.batchPrefix) {
+                            batchPrefixInput.value = settings.batchPrefix;
+                        }
+                    }
+                } catch (e) {
+                    console.error('恢复自定义设置失败:', e);
+                }
+            }
+
+            // V7新增：保存自定义设置
+            function saveCustomSettings() {
+                try {
+                    const settings = {
+                        documentNumber: documentNumberInput.value.trim(),
+                        batchPrefix: batchPrefixInput.value.trim(),
+                        saveTime: new Date().toISOString()
+                    };
+                    localStorage.setItem('batchGeneratorCustomSettings', JSON.stringify(settings));
+                } catch (e) {
+                    console.error('保存自定义设置失败:', e);
+                }
+            }
+
+            // V7新增：清空自定义设置
+            function resetCustomSettings() {
+                documentNumberInput.value = '';
+                batchPrefixInput.value = '';
+                saveCustomSettings();
+                showNotification('V7已清空单据号和批号前缀设置', 'blue');
+                
+                // 刷新表格中的批号显示（如果有前缀变更）
+                refreshBatchNumbers();
+            }
+
+            // V7新增：刷新表格中的批号显示（用于前缀变更时）
+            function refreshBatchNumbers() {
+                const rows = document.querySelectorAll('#batch-table-body tr');
+                
+                rows.forEach(row => {
+                    const materialInput = row.querySelector('.material-input');
+                    const batchOutput = row.querySelector('.batch-output span');
+                    const materialCode = materialInput.value.trim();
+                    
+                    if (materialCode && batchOutput.textContent && batchOutput.textContent !== '等待输入...') {
+                        // 重新生成批号（保留原计数）
+                        if (batchCounter[materialCode]) {
+                            const count = String(batchCounter[materialCode]).padStart(2, '0');
+                            const baseBatchNumber = `${formattedDate}${count}`;
+                            const finalBatchNumber = getBatchNumberWithPrefix(baseBatchNumber);
+                            batchOutput.textContent = finalBatchNumber;
+                        }
+                    }
+                });
+            }
+
+            // 更新粘贴区域计数
+            function updatePasteCount() {
+                const content = manualPasteArea.value.trim();
+                if (!content) {
+                    pasteCountElement.textContent = '0个物料编码';
+                    return;
+                }
+                
+                const count = content.split(/[\n\r]+/)
+                    .map(code => code.trim())
+                    .filter(code => code).length;
+                
+                pasteCountElement.textContent = `${count}个物料编码`;
+                
+                // 超过20个给出提示
+                if (count > 20) {
+                    pasteCountElement.classList.add('text-orange-600');
+                    pasteCountElement.textContent += ` (仅导入前20个)`;
+                } else {
+                    pasteCountElement.classList.remove('text-orange-600');
+                }
+            }
+
+            // 更新数据状态显示
+            function updateDataStatus() {
+                try {
+                    const savedData = localStorage.getItem('batchGeneratorData');
+                    if (savedData) {
+                        const data = JSON.parse(savedData);
+                        const saveTime = new Date(data.saveTime);
+                        const now = new Date();
+                        const diffMinutes = Math.floor((now - saveTime) / 60000);
+                        
+                        if (diffMinutes < 5) {
+                            dataStatusElement.innerHTML = '✓';
+                            dataStatusElement.className = 'text-3xl font-bold text-green-600';
+                        } else {
+                            dataStatusElement.innerHTML = '⚠';
+                            dataStatusElement.className = 'text-3xl font-bold text-yellow-600';
+                        }
+                    } else {
+                        dataStatusElement.innerHTML = '⊘';
+                        dataStatusElement.className = 'text-3xl font-bold text-gray-400';
+                    }
+                } catch (e) {
+                    dataStatusElement.innerHTML = '⊘';
+                    dataStatusElement.className = 'text-3xl font-bold text-red-600';
+                }
+            }
+
+            // 生成20行输入框
+            function generateInputRows() {
+                tableBody.innerHTML = '';
+                
+                for (let i = 1; i <= 20; i++) {
+                    const row = document.createElement('tr');
+                    row.className = 'border-b border-gray-200 hover:bg-gray-50 transition-colors';
+                    row.dataset.rowIndex = i;
+                    
+                    row.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">${i}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex">
+                                <input type="text" 
+                                    class="material-input w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none input-focus" 
+                                    placeholder="输入物料编码..."
+                                    data-row="${i}">
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="batch-output bg-gray-50 px-3 py-2 rounded-md min-w-[200px] h-[40px] flex items-center">
+                                <span class="text-gray-400 text-sm">等待输入...</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div class="flex flex-col space-y-2">
+                                <div class="flex space-x-2">
+                                    <button class="copy-button flex-1 px-3 py-1 bg-gray-100 text-gray-600 rounded-md copy-button-hover disabled:opacity-50 disabled:cursor-not-allowed" 
+                                        disabled>
+                                        <i class="fa fa-copy"></i> 复制
+                                    </button>
+                                    <button class="clear-row px-3 py-1 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors"
+                                        data-row="${i}">
+                                        <i class="fa fa-times"></i>
+                                    </button>
+                                </div>
+                                <div class="flex items-center space-x-1">
+                                    <input type="number" 
+                                        class="preset-count-input w-12 px-2 py-1 border border-gray-300 rounded-md text-xs focus:outline-none input-focus" 
+                                        placeholder="次数" 
+                                        min="0"
+                                        data-row="${i}">
+                                    <button class="apply-preset-row px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
+                                        data-row="${i}">
+                                        <i class="fa fa-check"></i> 应用
+                                    </button>
+                                </div>
+                            </div>
+                        </td>
+                    `;
+                    
+                    tableBody.appendChild(row);
+                }
+                
+                // 为所有物料输入框添加事件监听器
+                document.querySelectorAll('.material-input').forEach(input => {
+                    input.addEventListener('input', handleMaterialInput);
+                    input.addEventListener('paste', handlePaste);
+                });
+                
+                // 为所有复制按钮添加事件监听器
+                document.querySelectorAll('.copy-button').forEach(button => {
+                    button.addEventListener('click', handleCopyBatch);
+                });
+                
+                // 为所有行内清空按钮添加事件监听器
+                document.querySelectorAll('.clear-row').forEach(button => {
+                    button.addEventListener('click', handleClearRow);
+                });
+                
+                // 为所有行内预设次数按钮添加事件监听器
+                document.querySelectorAll('.apply-preset-row').forEach(button => {
+                    button.addEventListener('click', handleRowPreset);
+                });
+                
+                // 为所有行内预设次数输入框添加键盘事件
+                document.querySelectorAll('.preset-count-input').forEach(input => {
+                    input.addEventListener('keydown', function(event) {
+                        if (event.key === 'Enter' && this.value.trim()) {
+                            event.preventDefault();
+                            const rowIndex = this.dataset.row;
+                            const button = document.querySelector(`.apply-preset-row[data-row="${rowIndex}"]`);
+                            button.click();
+                        }
+                    });
+                });
+                
+                // V7新增：监听自定义设置变化
+                documentNumberInput.addEventListener('input', saveCustomSettings);
+                batchPrefixInput.addEventListener('input', function() {
+                    saveCustomSettings();
+                    refreshBatchNumbers(); // 前缀变化时刷新批号显示
+                });
+            }
+
+            // 清空单行数据
+            function handleClearRow(event) {
+                const button = event.target.closest('.clear-row');
+                const rowIndex = button.dataset.row;
+                const row = document.querySelector(`tr[data-row-index="${rowIndex}"]`);
+                
+                const materialInput = row.querySelector('.material-input');
+                const batchOutput = row.querySelector('.batch-output');
+                const copyButton = row.querySelector('.copy-button');
+                
+                // 获取当前物料编码，用于更新计数器
+                const materialCode = materialInput.value.trim();
+                
+                // 清空输入框
+                materialInput.value = '';
+                
+                // 重置显示
+                batchOutput.innerHTML = `<span class="text-gray-400 text-sm">等待输入...</span>`;
+                copyButton.disabled = true;
+                
+                // 移除高亮
+                row.classList.remove('row-highlight', 'bg-yellow-50', 'bg-yellow-100');
+                
+                // 如果有物料编码，更新计数器
+                if (materialCode && batchCounter[materialCode]) {
+                    // 减少总批次数
+                    totalBatches -= batchCounter[materialCode];
+                    if (totalBatches < 0) totalBatches = 0;
+                    
+                    // 移除计数器
+                    delete batchCounter[materialCode];
+                    materialsSet.delete(materialCode);
+                    
+                    // 更新统计信息
+                    updateStatistics();
+                    
+                    // 保存数据
+                    saveData();
+                    
+                    // 更新最后活动时间
+                    updateLastActivity();
+                    
+                    showNotification(`已清空物料 ${materialCode} 的数据`, 'blue');
+                }
+            }
+
+          
+            // V7新增：获取带前缀的批号
+            function getBatchNumberWithPrefix(baseBatchNumber) {
+                const prefix = batchPrefixInput.value.trim();
+                return prefix ? `${prefix}${baseBatchNumber}` : baseBatchNumber;
+            }
+
+            // 处理物料编码输入
+            function handleMaterialInput(event) {
+                const input = event.target;
+                const materialCode = input.value.trim();
+                const rowIndex = input.dataset.row;
+                const row = document.querySelector(`tr[data-row-index="${rowIndex}"]`);
+                const batchOutput = row.querySelector('.batch-output');
+                const copyButton = row.querySelector('.copy-button');
+                
+                // 清除之前的高亮
+                row.classList.remove('row-highlight');
+                
+                if (materialCode) {
+                    // 生成批号
+                    const batchNumber = generateBatchNumber(materialCode);
+                    
+                    // 更新批号显示
+                    batchOutput.innerHTML = `<span class="text-primary font-semibold batch-appear">${batchNumber}</span>`;
+                    
+                    // 启用复制按钮
+                    copyButton.disabled = false;
+                    
+                    // 添加高亮效果
+                    row.classList.add('row-highlight');
+                    
+                    // 更新统计信息
+                    updateStatistics();
+                    
+                    // 保存数据到本地存储
+                    saveData();
+                    
+                    // 更新最后活动时间
+                    updateLastActivity();
+                    
+                    // 更新数据状态
+                    updateDataStatus();
+                } else {
+                    // 重置显示
+                    batchOutput.innerHTML = `<span class="text-gray-400 text-sm">等待输入...</span>`;
+                    copyButton.disabled = true;
+                }
+            }
+
+            // 处理粘贴事件
+            function handlePaste(event) {
+                // 延迟处理，确保粘贴内容已输入
+                setTimeout(() => {
+                    handleMaterialInput(event);
+                    updatePasteCount(); // V7保持：更新粘贴计数
+                }, 10);
+            }
+
+            // 生成批号
+            function generateBatchNumber(materialCode) {
+                // 检查日期是否变更
+                checkDailyReset();
+                
+                // 确保该物料编码的计数器存在
+                if (!batchCounter[materialCode]) {
+                    batchCounter[materialCode] = 0;
+                    materialsSet.add(materialCode);
+                }
+                
+                // 增加计数
+                batchCounter[materialCode]++;
+                totalBatches++;
+                
+                // 格式化计数，确保两位数
+                const count = String(batchCounter[materialCode]).padStart(2, '0');
+                
+                // 基础批号
+                const baseBatchNumber = `${formattedDate}${count}`;
+                
+                // V7新增：添加自定义前缀
+                return getBatchNumberWithPrefix(baseBatchNumber);
+            }
+
+            // 复制批号到剪贴板
+            function handleCopyBatch(event) {
+                const button = event.target.closest('.copy-button');
+                const row = button.closest('tr');
+                const batchOutput = row.querySelector('.batch-output span');
+                const batchNumber = batchOutput.textContent;
+                
+                // 复制到剪贴板
+                navigator.clipboard.writeText(batchNumber).then(() => {
+                    // 显示复制成功提示
+                    showCopyNotification();
+                    
+                    // 添加复制动画效果
+                    batchOutput.classList.add('text-green-600');
+                    setTimeout(() => {
+                        batchOutput.classList.remove('text-green-600');
+                    }, 500);
+                }).catch(err => {
+                    console.error('复制失败:', err);
+                    showNotification('复制失败，请手动复制', 'red');
+                });
+            }
+
+            // 显示复制成功提示
+            function showCopyNotification() {
+                copyNotification.classList.remove('translate-y-20', 'opacity-0');
+                
+                setTimeout(() => {
+                    copyNotification.classList.add('translate-y-20', 'opacity-0');
+                }, 2000);
+            }
+
+            // 清空所有输入
+            function clearAllInputs() {
+                if (confirm('确定要清空所有输入吗？此操作不可撤销。')) {
+                    document.querySelectorAll('.material-input').forEach(input => {
+                        input.value = '';
+                    });
+                    
+                    document.querySelectorAll('.batch-output').forEach(output => {
+                        output.innerHTML = `<span class="text-gray-400 text-sm">等待输入...</span>`;
+                    });
+                    
+                    document.querySelectorAll('.copy-button').forEach(button => {
+                        button.disabled = true;
+                    });
+                    
+                    // 清空粘贴区域
+                    manualPasteArea.value = '';
+                    updatePasteCount();
+                    
+                    // 重置计数器
+                    batchCounter = {};
+                    totalBatches = 0;
+                    materialsSet.clear();
+                    
+                    // 更新统计信息
+                    updateStatistics();
+                    
+                    // 清除本地存储
+                    localStorage.removeItem('batchGeneratorData');
+                    
+                    // 更新数据状态
+                    updateDataStatus();
+                    
+                    // 显示清空成功提示
+                    showNotification('已清空所有输入', 'green');
+                }
+            }
+
+            // 导出数据为CSV
+            function exportDataToCSV() {
+                // 收集所有非空行的数据
+                const data = [];
+                const rows = document.querySelectorAll('#batch-table-body tr');
+                
+                rows.forEach(row => {
+                    const materialInput = row.querySelector('.material-input');
+                    const batchOutput = row.querySelector('.batch-output span');
+                    
+                    const materialCode = materialInput.value.trim();
+                    const batchNumber = batchOutput.textContent;
+                    
+                    if (materialCode && batchNumber !== '等待输入...') {
+                        data.push({
+                            materialCode,
+                            batchNumber,
+                            timestamp: new Date().toLocaleString()
+                        });
+                    }
+                });
+                
+                if (data.length === 0) {
+                    showNotification('没有数据可导出', 'red');
+                    return;
+                }
+                
+                // 创建CSV内容
+                let csvContent = "物料编码,批号,生成时间\n";
+                
+                data.forEach(item => {
+                    csvContent += `"${item.materialCode}","${item.batchNumber}","${item.timestamp}"\n`;
+                });
+                
+                // V7新增：生成自定义文件名
+                const documentNumber = documentNumberInput.value.trim();
+                let fileName;
+                
+                if (documentNumber) {
+                    // 有单据号：单据号+年月日
+                    fileName = `${documentNumber}_${formattedDate}.csv`;
+                } else {
+                    // 无单据号：默认命名+V7标识
+                    fileName = `${formattedDate}_V7.csv`;
+                }
+                
+                // 创建下载链接
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.setAttribute('href', url);
+                link.setAttribute('download', fileName); // 使用自定义文件名
+                link.style.visibility = 'hidden';
+                
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                showNotification(`V7数据导出成功，文件名为：${fileName}`, 'green');
+            }
+
+            // V7增强：数据备份功能（包含自定义设置）
+            function backupAllData() {
+                try {
+                    // 收集完整数据
+                    const backupData = {
+                        version: VERSION,
+                        createTime: new Date().toISOString(),
+                        batchCounter: batchCounter,
+                        formattedDate: formattedDate,
+                        totalBatches: totalBatches,
+                        materialsArray: Array.from(materialsSet),
+                        lastActivity: lastActivityElement.textContent,
+                        // V7新增：包含自定义设置
+                        customSettings: {
+                            documentNumber: documentNumberInput.value.trim(),
+                            batchPrefix: batchPrefixInput.value.trim()
+                        },
+                        tableData: [],
+                        systemInfo: {
+                            browser: navigator.userAgent,
+                            date: new Date().toLocaleString()
+                        }
+                    };
+                    
+                    // 收集表格数据
+                    document.querySelectorAll('#batch-table-body tr').forEach(row => {
+                        const materialInput = row.querySelector('.material-input');
+                        const batchOutput = row.querySelector('.batch-output span');
+                        
+                        const materialCode = materialInput.value.trim();
+                        const batchNumber = batchOutput.textContent;
+                        
+                        if (materialCode) {
+                            backupData.tableData.push({
+                                materialCode,
+                                batchNumber: batchNumber !== '等待输入...' ? batchNumber : '',
+                                rowIndex: row.dataset.rowIndex
+                            });
+                        }
+                    });
+                    
+                    // V7新增：生成备份文件名
+                    const documentNumber = documentNumberInput.value.trim();
+                    let backupFileName;
+                    
+                    if (documentNumber) {
+                        backupFileName = `${documentNumber}_V7_备份_${formattedDate}_${Date.now()}.json`;
+                    } else {
+                        backupFileName = `综合库物料批号生成器_V7_备份_${formattedDate}_${Date.now()}.json`;
+                    }
+                    
+                    // 创建备份文件
+                    const blob = new Blob([JSON.stringify(backupData, null, 2)], { 
+                        type: 'application/json;charset=utf-8;' 
+                    });
+                    
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.setAttribute('href', url);
+                    link.setAttribute('download', backupFileName);
+                    link.style.visibility = 'hidden';
+                    
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    
+                    showNotification('V7完整数据备份成功', 'green');
+                } catch (error) {
+                    console.error('备份失败:', error);
+                    showNotification('V7数据备份失败: ' + error.message, 'red');
+                }
+            }
+
+            // 搜索物料编码
+            function searchMaterials() {
+                const searchTerm = searchInput.value.toLowerCase().trim();
+                const rows = document.querySelectorAll('#batch-table-body tr');
+                
+                rows.forEach(row => {
+                    const materialInput = row.querySelector('.material-input');
+                    const materialCode = materialInput.value.toLowerCase().trim();
+                    
+                    if (materialCode.includes(searchTerm)) {
+                        row.style.display = '';
+                        
+                        // 如果找到匹配项，添加高亮
+                        if (searchTerm) {
+                            row.classList.add('bg-yellow-50');
+                        } else {
+                            row.classList.remove('bg-yellow-50');
+                        }
+                    } else {
+                        row.style.display = searchTerm ? 'none' : '';
+                        row.classList.remove('bg-yellow-50');
+                    }
+                });
+            }
+
+            // 更新统计信息
+            function updateStatistics() {
+                totalBatchesElement.textContent = totalBatches;
+                materialsCountElement.textContent = materialsSet.size;
+                
+                // 计算最大重复次数
+                const maxRepeat = Math.max(...Object.values(batchCounter), 0);
+                maxRepeatElement.textContent = maxRepeat;
+            }
+
+            // 更新最后活动时间
+            function updateLastActivity() {
+                const now = new Date();
+                lastActivityElement.textContent = formatTime(now);
+            }
+
+            // 检查每日重置
+            function checkDailyReset() {
+                const today = formatDate(new Date());
+                
+                if (today !== formattedDate) {
+                    // 日期已变更，重置计数器
+                    formattedDate = today;
+                    batchCounter = {};
+                    totalBatches = 0;
+                    materialsSet.clear();
+                    
+                    // 更新日期显示
+                    currentDateElement.textContent = formatDateDisplay(new Date());
+                    
+                    // 更新统计信息
+                    updateStatistics();
+                    
+                    // 保存更新后的数据
+                    saveData();
+                    
+                    // V7保持：日期变更提示
+                    showNotification('V7版本：日期已变更，计数器已重置', 'blue');
+                }
+            }
+
+            // 保存数据到本地存储
+            function saveData(manual = false) {
+                try {
+                    // 收集当前表格中的所有数据
+                    const tableData = [];
+                    document.querySelectorAll('#batch-table-body tr').forEach(row => {
+                        const materialInput = row.querySelector('.material-input');
+                        const batchOutput = row.querySelector('.batch-output span');
+                        
+                        const materialCode = materialInput.value.trim();
+                        const batchNumber = batchOutput.textContent;
+                        
+                        if (materialCode) {
+                            tableData.push({
+                                materialCode,
+                                batchNumber: batchNumber !== '等待输入...' ? batchNumber : '',
+                                rowIndex: row.dataset.rowIndex
+                            });
+                        }
+                    });
+                    
+                    const data = {
+                        version: VERSION, // V7版本标识
+                        batchCounter,
+                        formattedDate,
+                        totalBatches,
+                        materialsArray: Array.from(materialsSet),
+                        lastActivity: lastActivityElement.textContent,
+                        tableData: tableData,
+                        saveTime: new Date().toISOString()
+                    };
+                    
+                    localStorage.setItem('batchGeneratorData', JSON.stringify(data));
+                    
+                    // V7新增：保存自定义设置
+                    saveCustomSettings();
+                    
+                    // 更新数据状态
+                    updateDataStatus();
+                    
+                    if (manual) {
+                        showNotification('V7数据已手动保存成功', 'green');
+                    }
+                } catch (error) {
+                    console.error('保存数据失败:', error);
+                    showNotification('V7数据保存失败: ' + error.message, 'red');
+                }
+            }
+
+            // 从本地存储加载数据
+            function loadSavedData(manual = false) {
+                try {
+                    const savedData = localStorage.getItem('batchGeneratorData');
+                    
+                    if (savedData) {
+                        const data = JSON.parse(savedData);
+                        const savedDate = data.formattedDate;
+                        const today = formatDate(new Date());
+                        
+                        // 检查版本兼容性
+                        if (data.version && data.version !== VERSION) {
+                            showNotification(`检测到旧版本(${data.version})数据，正在兼容V7版本`, 'blue');
+                        }
+                        
+                        // 恢复计数器数据
+                        batchCounter = data.batchCounter || {};
+                        formattedDate = data.formattedDate || today;
+                        totalBatches = data.totalBatches || 0;
+                        materialsSet = new Set(data.materialsArray || []);
+                        
+                        // 恢复最后活动时间
+                        if (data.lastActivity) {
+                            lastActivityElement.textContent = data.lastActivity;
+                        }
+                        
+                        // 如果是今天的数据，恢复表格内容
+                        if (savedDate === today && data.tableData) {
+                            // 延迟恢复表格内容，确保DOM已经生成
+                            setTimeout(() => {
+                                data.tableData.forEach(item => {
+                                    const row = document.querySelector(`tr[data-row-index="${item.rowIndex}"]`);
+                                    if (row) {
+                                        const materialInput = row.querySelector('.material-input');
+                                        const batchOutput = row.querySelector('.batch-output');
+                                        const copyButton = row.querySelector('.copy-button');
+                                        
+                                        // 恢复物料编码
+                                        materialInput.value = item.materialCode;
+                                        
+                                        // 恢复批号显示（重新生成以应用当前前缀）
+                                        if (item.batchNumber) {
+                                            // 提取原始计数重新生成
+                                            if (batchCounter[item.materialCode]) {
+                                                const count = String(batchCounter[item.materialCode]).padStart(2, '0');
+                                                const baseBatchNumber = `${formattedDate}${count}`;
+                                                const finalBatchNumber = getBatchNumberWithPrefix(baseBatchNumber);
+                                                batchOutput.innerHTML = `<span class="text-primary font-semibold">${finalBatchNumber}</span>`;
+                                                copyButton.disabled = false;
+                                            } else {
+                                                batchOutput.innerHTML = `<span class="text-primary font-semibold">${item.batchNumber}</span>`;
+                                                copyButton.disabled = false;
+                                            }
+                                        }
+                                    }
+                                });
+                            }, 100);
+                        }
+                        
+                        if (manual) {
+                            showNotification('V7数据恢复成功', 'green');
+                        }
+                    } else if (manual) {
+                        showNotification('V7未找到保存的数据', 'blue');
+                    }
+                } catch (error) {
+                    console.error('加载保存的数据失败:', error);
+                    showNotification('V7数据恢复失败: ' + error.message, 'red');
+                }
+            }
+
+            // 手动粘贴物料编码到表格
+            function handleManualPaste() {
+                const pasteContent = manualPasteArea.value.trim();
+                if (!pasteContent) {
+                    showNotification('V7提示：请先粘贴物料编码列表', 'red');
+                    manualPasteArea.focus();
+                    return;
+                }
+                
+                // 按行分割，过滤空行
+                const materialCodes = pasteContent.split(/[\n\r]+/)
+                    .map(code => code.trim())
+                    .filter(code => code);
+                
+                if (materialCodes.length === 0) {
+                    showNotification('V7提示：未找到有效的物料编码', 'red');
+                    return;
+                }
+                
+                // 清空现有表格数据
+                document.querySelectorAll('.material-input').forEach(input => {
+                    input.value = '';
+                });
+                
+                document.querySelectorAll('.batch-output').forEach(output => {
+                    output.innerHTML = `<span class="text-gray-400 text-sm">等待输入...</span>`;
+                });
+                
+                document.querySelectorAll('.copy-button').forEach(button => {
+                    button.disabled = true;
+                });
+                
+                // 导入物料编码到表格
+                const maxRows = Math.min(materialCodes.length, 20); // 最多导入20行
+                let successCount = 0;
+                
+                for (let i = 0; i < maxRows; i++) {
+                    const row = document.querySelector(`tr[data-row-index="${i + 1}"]`);
+                    if (row) {
+                        const materialInput = row.querySelector('.material-input');
+                        materialInput.value = materialCodes[i];
+                        
+                        // 触发输入事件以生成批号
+                        const inputEvent = new Event('input', { bubbles: true });
+                        materialInput.dispatchEvent(inputEvent);
+                        successCount++;
+                    }
+                }
+                
+                // 清空粘贴区域
+                manualPasteArea.value = '';
+                updatePasteCount();
+                
+                showNotification(`V7成功导入 ${successCount} 个物料编码`, 'green');
+                
+                if (materialCodes.length > 20) {
+                    showNotification(`V7提示：共识别到 ${materialCodes.length} 个物料编码，表格最多显示20行`, 'blue');
+                }
+            }
+
+            // 设置事件监听器
+            function setupEventListeners() {
+                // 清空全部按钮
+                clearAllButton.addEventListener('click', clearAllInputs);
+                
+                // 导出数据按钮
+                exportDataButton.addEventListener('click', exportDataToCSV);
+                
+                // V7保持：数据备份按钮
+                backupDataButton.addEventListener('click', backupAllData);
+                
+                // 导入Excel按钮
+                importDataButton.addEventListener('click', function() {
+                    if (window.location.protocol === 'file:') {
+                        showNotification('V7提示：本地文件模式下文件导入功能受限，建议使用"手动粘贴物料编码"功能', 'blue');
+                    }
+                    fileInput.click();
+                });
+                
+                // 文件选择事件
+                fileInput.addEventListener('change', handleFileImport);
+                
+                // 搜索输入框
+                searchInput.addEventListener('input', searchMaterials);
+                
+                // 次数预设功能
+                applyPresetButton.addEventListener('click', applyPreset);
+                
+                // 预设输入框的键盘事件
+                presetMaterialInput.addEventListener('keydown', function(event) {
+                    if (event.key === 'Tab' && presetMaterialInput.value.trim()) {
+                        event.preventDefault();
+                        presetCountInput.focus();
+                    }
+                });
+                
+                presetCountInput.addEventListener('keydown', function(event) {
+                    if (event.key === 'Enter' && presetMaterialInput.value.trim() && presetCountInput.value.trim()) {
+                        event.preventDefault();
+                        applyPreset();
+                    }
+                });
+
+                // 手动粘贴物料编码
+                pasteToTableButton.addEventListener('click', handleManualPaste);
+                clearPasteAreaButton.addEventListener('click', function() {
+                    manualPasteArea.value = '';
+                    updatePasteCount();
+                    showNotification('V7已清空粘贴区域', 'blue');
+                });
+                
+                manualPasteArea.addEventListener('keydown', function(event) {
+                    if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+                        event.preventDefault();
+                        handleManualPaste();
+                    }
+                });
+
+                // 手动保存/恢复数据
+                saveDataManualButton.addEventListener('click', () => saveData(true));
+                
+                // V7新增：清空自定义设置按钮
+                resetCustomSettingsButton.addEventListener('click', resetCustomSettings);
+                
+                // 为输入框添加键盘快捷键
+                document.addEventListener('keydown', function(event) {
+                    // Ctrl/Cmd + Enter 清空搜索
+                    if ((event.ctrlKey || event.metaKey) && event.key === 'Enter' && document.activeElement !== presetCountInput) {
+                        searchInput.value = '';
+                        searchMaterials();
+                    }
+                    
+                    // Ctrl/Cmd + E 导出数据
+                    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'e') {
+                        event.preventDefault();
+                        exportDataToCSV();
+                    }
+                    
+                    // Ctrl/Cmd + B 备份数据 (V7保持)
+                    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'b') {
+                        event.preventDefault();
+                        backupAllData();
+                    }
+                    
+                    // Ctrl/Cmd + S 手动保存
+                    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+                        event.preventDefault();
+                        saveData(true);
+                    }
+                    
+                    // Ctrl/Cmd + R 重置自定义设置 (V7新增)
+                    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'r') {
+                        event.preventDefault();
+                        resetCustomSettings();
+                    }
+                    
+                    // Ctrl/Cmd + P 聚焦到预设功能
+                    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'p') {
+                        event.preventDefault();
+                        presetMaterialInput.focus();
+                    }
+                });
+                
+                // 定期检查日期变更（每小时）
+                setInterval(checkDailyReset, 3600000);
+                
+                // 定期自动保存数据（每30秒）
+                setInterval(saveData, 30000);
+                
+                // 定期更新数据状态（每分钟）
+                setInterval(updateDataStatus, 60000);
+            }
+            
+            // 应用次数预设
+            function applyPreset() {
+                const materialCode = presetMaterialInput.value.trim();
+                const presetCount = parseInt(presetCountInput.value.trim());
+                
+                // 验证输入
+                if (!materialCode) {
+                    showNotification('V7提示：请输入物料编码', 'red');
+                    presetMaterialInput.focus();
+                    return;
+                }
+                
+                if (isNaN(presetCount) || presetCount < 0) {
+                    showNotification('V7提示：请输入有效的次数（非负整数）', 'red');
+                    presetCountInput.focus();
+                    return;
+                }
+                
+                // 检查日期是否变更
+                checkDailyReset();
+                
+                // 更新计数器
+                const oldCount = batchCounter[materialCode] || 0;
+                batchCounter[materialCode] = presetCount;
+                
+                // 如果是新的物料编码，添加到集合中
+                if (!batchCounter.hasOwnProperty(materialCode)) {
+                    materialsSet.add(materialCode);
+                }
+                
+                // 更新总批次数
+                totalBatches = Object.values(batchCounter).reduce((sum, count) => sum + count, 0);
+                
+                // 更新统计信息
+                updateStatistics();
+                
+                // 保存数据到本地存储
+                saveData();
+                
+                // 更新最后活动时间
+                updateLastActivity();
+                
+                // 更新数据状态
+                updateDataStatus();
+                
+                // 显示成功提示
+                showNotification(`V7已将物料 ${materialCode} 的计数设置为 ${presetCount}`, 'green');
+                
+                // 清空输入框
+                presetMaterialInput.value = '';
+                presetCountInput.value = '';
+                
+                // 高亮显示包含该物料编码的行
+                highlightMaterialRows(materialCode);
+            }
+            
+            // 高亮显示包含指定物料编码的行
+            function highlightMaterialRows(materialCode) {
+                const rows = document.querySelectorAll('#batch-table-body tr');
+                
+                rows.forEach(row => {
+                    const materialInput = row.querySelector('.material-input');
+                    
+                    if (materialInput.value.trim() === materialCode) {
+                        // 移除之前的高亮类
+                        row.classList.remove('row-highlight');
+                        
+                        // 触发重排以应用动画
+                        void row.offsetWidth;
+                        
+                        // 添加新的高亮类
+                        row.classList.add('bg-yellow-100');
+                        
+                        // 3秒后移除高亮
+                        setTimeout(() => {
+                            row.classList.remove('bg-yellow-100');
+                        }, 3000);
+                    }
+                });
+            }
+            
+            // 处理Excel文件导入
+            function handleFileImport(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                
+                // 检查是否为本地文件模式
+                if (window.location.protocol === 'file:') {
+                    showNotification('V7提示：本地文件模式下文件导入功能可能受限，建议使用"手动粘贴物料编码"功能', 'blue');
+                }
+                
+                // 显示加载提示
+                const loadingNotification = document.createElement('div');
+                loadingNotification.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+                loadingNotification.innerHTML = `
+                    <div class="bg-white p-6 rounded-lg shadow-xl flex flex-col items-center">
+                        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+                        <p class="text-lg font-medium text-gray-700">V7正在解析文件...</p>
+                        <p id="import-progress" class="text-sm text-gray-500 mt-2">准备中...</p>
+                    </div>
+                `;
+                document.body.appendChild(loadingNotification);
+                
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        
+                        // 获取第一个工作表
+                        const firstSheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[firstSheetName];
+                        
+                        // 将工作表转换为JSON
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                        
+                        if (jsonData.length === 0) {
+                            throw new Error('文件中没有数据');
+                        }
+                        
+                        // 更新进度
+                        document.getElementById('import-progress').textContent = `V7找到 ${jsonData.length} 条记录，正在处理...`;
+                        
+                        // 查找物料编码列
+                        const firstRow = jsonData[0];
+                        let materialCodeColumn = null;
+                        
+                        // 尝试识别物料编码列
+                        for (const key in firstRow) {
+                            if (key.toLowerCase().includes('物料') || 
+                                key.toLowerCase().includes('编码') || 
+                                key.toLowerCase().includes('code') || 
+                                key.toLowerCase().includes('material')) {
+                                materialCodeColumn = key;
+                                break;
+                            }
+                        }
+                        
+                        // 如果没有找到明显的物料编码列，使用第一列
+                        if (!materialCodeColumn) {
+                            materialCodeColumn = Object.keys(firstRow)[0];
+                            document.getElementById('import-progress').textContent = `V7未找到明确的物料编码列，使用第一列 "${materialCodeColumn}"`;
+                        }
+                        
+                        // 准备导入数据
+                        const materialCodes = jsonData.map(row => row[materialCodeColumn]).filter(code => code && code.toString().trim() !== '');
+                        
+                        if (materialCodes.length === 0) {
+                            throw new Error('未找到有效的物料编码');
+                        }
+                        
+                        // 更新进度
+                        document.getElementById('import-progress').textContent = `V7准备导入 ${materialCodes.length} 个物料编码...`;
+                        
+                        // 清空现有表格数据
+                        document.querySelectorAll('.material-input').forEach(input => {
+                            input.value = '';
+                        });
+                        
+                        document.querySelectorAll('.batch-output').forEach(output => {
+                            output.innerHTML = `<span class="text-gray-400 text-sm">等待输入...</span>`;
+                        });
+                        
+                        document.querySelectorAll('.copy-button').forEach(button => {
+                            button.disabled = true;
+                        });
+                        
+                        // 导入物料编码到表格
+                        const maxRows = Math.min(materialCodes.length, 20); // 最多导入20行
+                        let successCount = 0;
+                        
+                        for (let i = 0; i < maxRows; i++) {
+                            const row = document.querySelector(`tr[data-row-index="${i + 1}"]`);
+                            if (row) {
+                                const materialInput = row.querySelector('.material-input');
+                                materialInput.value = materialCodes[i].toString().trim();
+                                
+                                // 触发输入事件以生成批号
+                                const inputEvent = new Event('input', { bubbles: true });
+                                materialInput.dispatchEvent(inputEvent);
+                                successCount++;
+                            }
+                        }
+                        
+                        // 更新进度
+                        document.getElementById('import-progress').textContent = `V7成功导入 ${successCount} 个物料编码`;
+                        
+                        // 移除加载提示
+                        setTimeout(() => {
+                            document.body.removeChild(loadingNotification);
+                            showNotification(`V7成功导入 ${successCount} 个物料编码`, 'green');
+                            
+                            if (materialCodes.length > 20) {
+                                showNotification(`V7提示：文件中有 ${materialCodes.length} 个物料编码，但表格最多支持20行`, 'blue');
+                            }
+                        }, 1000);
+                        
+                    } catch (error) {
+                        document.body.removeChild(loadingNotification);
+                        showNotification(`V7导入失败: ${error.message}`, 'red');
+                        console.error('V7导入错误:', error);
+                    }
+                };
+                
+                reader.onerror = function() {
+                    document.body.removeChild(loadingNotification);
+                    showNotification('V7文件读取失败，建议使用手动粘贴功能', 'red');
+                };
+                
+                // 读取文件
+                reader.readAsArrayBuffer(file);
+                
+                // 清空文件输入，允许重新选择同一个文件
+                event.target.value = '';
+            }
+            
+            // 处理行内预设次数
+            function handleRowPreset(event) {
+                const button = event.target.closest('.apply-preset-row');
+                const rowIndex = button.dataset.row;
+                const row = document.querySelector(`tr[data-row-index="${rowIndex}"]`);
+                const materialInput = row.querySelector('.material-input');
+                const presetCountInput = row.querySelector('.preset-count-input');
+                
+                const materialCode = materialInput.value.trim();
+                const presetCount = parseInt(presetCountInput.value.trim());
+                
+                // 验证输入
+                if (!materialCode) {
+                    showNotification('V7提示：请先输入物料编码', 'red');
+                    materialInput.focus();
+                    return;
+                }
+                
+                if (isNaN(presetCount) || presetCount < 0) {
+                    showNotification('V7提示：请输入有效的次数（非负整数）', 'red');
+                    presetCountInput.focus();
+                    return;
+                }
+                
+                // 检查日期是否变更
+                checkDailyReset();
+                
+                // 更新计数器
+                const oldCount = batchCounter[materialCode] || 0;
+                batchCounter[materialCode] = presetCount;
+                
+                // 如果是新的物料编码，添加到集合中
+                if (!batchCounter.hasOwnProperty(materialCode)) {
+                    materialsSet.add(materialCode);
+                }
+                
+                // 更新总批次数
+                totalBatches = Object.values(batchCounter).reduce((sum, count) => sum + count, 0);
+                
+                // 更新统计信息
+                updateStatistics();
+                
+                // 保存数据到本地存储
+                saveData();
+                
+                // 更新最后活动时间
+                updateLastActivity();
+                
+                // 更新数据状态
+                updateDataStatus();
+                
+                // 重新生成并显示批号（带前缀）
+                const batchOutput = row.querySelector('.batch-output');
+                const batchNumber = generateBatchNumber(materialCode);
+                batchOutput.innerHTML = `<span class="text-primary font-semibold batch-appear">${batchNumber}</span>`;
+                
+                // 启用复制按钮
+                const copyButton = row.querySelector('.copy-button');
+                copyButton.disabled = false;
+                
+                // 清空预设次数输入框
+                presetCountInput.value = '';
+                
+                // 显示成功提示
+                showNotification(`V7已将物料 ${materialCode} 的计数设置为 ${presetCount}`, 'green');
+                
+                // 添加高亮效果
+                row.classList.remove('row-highlight');
+                void row.offsetWidth;
+                row.classList.add('bg-yellow-100');
+                
+                // 3秒后移除高亮
+                setTimeout(() => {
+                    row.classList.remove('bg-yellow-100');
+                }, 3000);
+            }
+
+            // 显示通知
+            function showNotification(message, type = 'blue') {
+                const notification = document.createElement('div');
+                notification.className = `fixed top-5 right-5 px-4 py-2 rounded-lg shadow-lg transform transition-all duration-300 flex items-center z-50 ${
+                    type === 'green' ? 'bg-green-500 text-white' : 
+                    type === 'red' ? 'bg-red-500 text-white' : 
+                    'bg-blue-500 text-white'
+                }`;
+                
+                notification.innerHTML = `
+                    <i class="fa ${
+                        type === 'green' ? 'fa-check-circle' : 
+                        type === 'red' ? 'fa-exclamation-circle' : 
+                        'fa-info-circle'
+                    } mr-2"></i>
+                    <span>${message}</span>
+                `;
+                
+                document.body.appendChild(notification);
+                
+                // 显示通知
+                setTimeout(() => {
+                    notification.classList.remove('translate-y-[-20px]', 'opacity-0');
+                }, 10);
+                
+                // 3秒后隐藏通知
+                setTimeout(() => {
+                    notification.classList.add('opacity-0', 'translate-y-[-20px]');
+                    
+                    // 移除元素
+                    setTimeout(() => {
+                        document.body.removeChild(notification);
+                    }, 300);
+                }, 3000);
+            }
+
+            // 格式化日期为 YYYYMMDD
+            function formatDate(date) {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                
+                return `${year}${month}${day}`;
+            }
+
+            // 格式化日期显示
+            function formatDateDisplay(date) {
+                const year = date.getFullYear();
+                const month = date.getMonth() + 1;
+                const day = date.getDate();
+                
+                return `${year}年${month}月${day}日`;
+            }
+
+            // 格式化时间
+            function formatTime(date) {
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                const seconds = String(date.getSeconds()).padStart(2, '0');
+                
+                return `${hours}:${minutes}:${seconds}`;
+            }
+
+            // 初始化页面
+            initializePage();
+            
+            // V7启动提示
+            setTimeout(() => {
+                showNotification(`欢迎使用综合库物料批号生成器 V${VERSION} - 新增单据号和批号前缀自定义功能`, 'green');
+            }, 1000);
+        });
+    </script>
+</body>
 </html>
