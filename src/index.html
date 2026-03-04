@@ -1,11 +1,1209 @@
 <!DOCTYPE html>
-<html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>PakePlus</title>
-    </head>
-    <body>
-        Hello World
-    </body>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>员工绩效分数管理系统 - V12 侧边栏版</title>
+    <!-- Tailwind CSS v3 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <!-- 引入Tom Select用于多选下拉 -->
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1e40af',
+                        secondary: '#64748b',
+                        success: '#16a34a',
+                        danger: '#dc2626',
+                        warning: '#f59e0b',
+                        info: '#0ea5e9',
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .btn-primary { @apply bg-primary text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-800 transition-colors; }
+            .btn-success { @apply bg-success text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-700 transition-colors; }
+            .btn-danger { @apply bg-danger text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-700 transition-colors; }
+            .btn-secondary { @apply bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors; }
+            .input-field { @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent; }
+            .table-header { @apply px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase; }
+            .table-cell { @apply px-4 py-3 whitespace-nowrap text-sm text-gray-900; }
+            .nav-active { @apply bg-blue-100 text-primary font-medium border-r-4 border-primary; }
+            .checkbox-item { @apply flex items-center gap-2 p-2 border border-gray-200 rounded hover:bg-gray-50; }
+        }
+    </style>
+    <style>
+        /* 基础布局样式 */
+        body {
+            overflow-x: hidden;
+        }
+        .content-wrapper {
+            height: calc(100vh - 4rem);
+            overflow-y: auto;
+        }
+        /* 滚动条优化 */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-track {
+            background-color: #f8fafc;
+        }
+        /* Tom Select 样式适配 */
+        .ts-wrapper {
+            width: 100%;
+        }
+        .ts-control {
+            @apply input-field !important;
+            min-height: 42px !important;
+        }
+        .ts-dropdown {
+            @apply border border-gray-300 rounded-lg shadow-lg bg-white !important;
+        }
+        .ts-dropdown .option {
+            @apply px-3 py-2 hover:bg-blue-50 cursor-pointer !important;
+        }
+        .ts-dropdown .option.selected {
+            @apply bg-blue-100 text-primary !important;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- 登录验证 -->
+    <script>
+        // 检查是否已登录
+        const loggedInUser = localStorage.getItem('loggedInUser');
+        if (!loggedInUser) {
+            window.location.href = 'login.html';
+        }
+
+        // 退出登录函数
+        function logout() {
+            if (confirm('确定要退出登录吗？')) {
+                localStorage.removeItem('loggedInUser');
+                window.location.href = './login.html';
+            }
+        }
+
+        // 判断是否为管理员
+        function isAdmin() {
+            return loggedInUser === 'admin';
+        }
+    </script>
+
+    <!-- 整体布局容器 -->
+    <div class="flex h-screen w-full">
+        <!-- 左侧导航栏 -->
+        <aside class="w-64 bg-white shadow-lg fixed h-full z-10">
+            <!-- 系统标题 -->
+            <div class="p-6 border-b border-gray-200">
+                <h1 class="text-2xl font-bold text-primary flex items-center">
+                    <i class="fa fa-line-chart mr-3"></i>
+                    <span>绩效管理系统</span>
+                </h1>
+            </div>
+
+            <!-- 导航菜单 - 按要求调整顺序 -->
+            <nav class="mt-4 px-2">
+                <ul class="space-y-1">
+                    <!-- 主页（新增） -->
+                    <li>
+                        <button id="navHome" class="w-full flex items-center px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors nav-active" onclick="switchContent('home')">
+                            <i class="fa fa-home w-6 text-center mr-2 text-primary"></i>
+                            <span>主页</span>
+                        </button>
+                    </li>
+                    <!-- 单据管理 -->
+                    <li>
+                        <button id="navDocument" class="w-full flex items-center px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors" onclick="switchContent('document')">
+                            <i class="fa fa-file-text-o w-6 text-center mr-2 text-gray-500"></i>
+                            <span>单据管理</span>
+                        </button>
+                    </li>
+                    <!-- 单据记录 -->
+                    <li>
+                        <button id="navHistory" class="w-full flex items-center px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors" onclick="switchContent('history')">
+                            <i class="fa fa-history w-6 text-center mr-2 text-gray-500"></i>
+                            <span>单据记录</span>
+                        </button>
+                    </li>
+                    <!-- 员工管理 -->
+                    <li>
+                        <button id="navEmployee" class="w-full flex items-center px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors" onclick="switchContent('employee')">
+                            <i class="fa fa-users w-6 text-center mr-2 text-gray-500"></i>
+                            <span>员工管理</span>
+                        </button>
+                    </li>
+                    <!-- 绩效排行 -->
+                    <li>
+                        <button id="navRanking" class="w-full flex items-center px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors" onclick="switchContent('ranking')">
+                            <i class="fa fa-trophy w-6 text-center mr-2 text-gray-500"></i>
+                            <span>绩效排行</span>
+                        </button>
+                    </li>
+                </ul>
+            </nav>
+
+            <!-- 底部退出按钮 + 管理员清空按钮 -->
+            <div class="absolute bottom-4 left-0 right-0 px-4 space-y-3">
+                <!-- 仅管理员显示清空按钮 -->
+                <div id="clearAllBtnContainer" class="${isAdmin() ? 'block' : 'hidden'}">
+                    <button onclick="clearAllData()" class="w-full flex items-center justify-center px-4 py-2 text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors">
+                        <i class="fa fa-trash mr-2"></i>
+                        <span>一键清空所有数据</span>
+                    </button>
+                </div>
+                <button onclick="logout()" class="w-full flex items-center justify-center px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
+                    <i class="fa fa-sign-out mr-2"></i>
+                    <span>退出登录 </span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- 右侧内容区 -->
+        <main class="ml-64 w-full bg-gray-50">
+            <!-- 顶部栏 -->
+            <div class="bg-white shadow-sm h-16 px-6 flex items-center justify-between">
+                <h2 id="contentTitle" class="text-2xl font-bold text-primary">主页</h2>
+                <div>
+                    <span class="text-gray-600 mr-4">
+                        <i class="fa fa-calendar mr-1"></i>
+                        <span id="currentDate"></span>
+                    </span>
+                </div>
+            </div>
+
+            <!-- 内容容器 -->
+            <div class="p-6 content-wrapper">
+                <!-- 0. 主页模块（新增） -->
+                <div id="homeContent" class="content-section">
+                    <div class="bg-white rounded-xl shadow-lg p-6">
+                        <!-- 欢迎区域 -->
+                        <div class="flex flex-col md:flex-row items-center gap-8 mb-8">
+                            <div class="w-full md:w-1/3">
+                                <!-- 系统主图 - 使用绩效相关的图片 -->
+                                <img src="https://picsum.photos/id/180/600/400" alt="绩效管理系统" class="w-full h-auto rounded-lg shadow-md">
+                            </div>
+                            <div class="w-full md:w-2/3">
+                                <h2 class="text-3xl font-bold text-primary mb-4">综合库绩效管理系统欢迎您！</h2>
+                                <p class="text-gray-700 text-lg mb-6">
+                                    本系统旨在高效管理员工绩效分数，通过标准化的单据流程，实现绩效分值的奖励、扣罚全流程管理，
+                                    帮助企业建立公平、透明的绩效评价体系。
+                                </p>
+                                <!-- 数据概览卡片 -->
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div class="bg-blue-50 rounded-lg p-4 text-center">
+                                        <h3 class="text-gray-600 text-sm mb-2">总员工数</h3>
+                                        <p id="totalEmployees" class="text-2xl font-bold text-primary">0</p>
+                                    </div>
+                                    <div class="bg-green-50 rounded-lg p-4 text-center">
+                                        <h3 class="text-gray-600 text-sm mb-2">奖励单据</h3>
+                                        <p id="totalRewardDocs" class="text-2xl font-bold text-success">0</p>
+                                    </div>
+                                    <div class="bg-red-50 rounded-lg p-4 text-center">
+                                        <h3 class="text-gray-600 text-sm mb-2">扣分单据</h3>
+                                        <p id="totalPenaltyDocs" class="text-2xl font-bold text-danger">0</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 快速操作区 -->
+                        <div class="border-t border-gray-200 pt-6">
+                            <h3 class="text-xl font-bold text-gray-800 mb-4">快速操作</h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                                <button onclick="switchContent('employee')" class="btn-primary flex flex-col items-center py-4">
+                                    <i class="fa fa-user-plus text-2xl mb-2"></i>
+                                    <span>添加员工</span>
+                                </button>
+                                <button onclick="switchContent('document')" class="btn-success flex flex-col items-center py-4">
+                                    <i class="fa fa-file-text-o text-2xl mb-2"></i>
+                                    <span>创建单据</span>
+                                </button>
+                                <button onclick="switchContent('ranking')" class="btn-secondary flex flex-col items-center py-4">
+                                    <i class="fa fa-trophy text-2xl mb-2"></i>
+                                    <span>查看排行</span>
+                                </button>
+                                <button onclick="switchContent('history')" class="btn-secondary flex flex-col items-center py-4">
+                                    <i class="fa fa-history text-2xl mb-2"></i>
+                                    <span>单据记录</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 1. 员工管理模块 -->
+                <div id="employeeContent" class="content-section hidden">
+                    <div class="bg-white rounded-xl shadow-lg p-6">
+                        <h3 class="text-xl font-bold text-primary mb-6 flex items-center">
+                            <i class="fa fa-user-plus mr-3"></i>添加新员工
+                        </h3>
+                        <form id="employeeForm" class="space-y-4 max-w-md">
+                            <div>
+                                <label for="employeeName" class="block text-gray-700 text-sm font-bold mb-2">员工姓名</label>
+                                <input type="text" id="employeeName" class="input-field" placeholder="请输入员工姓名">
+                            </div>
+                            <div>
+                                <label for="initialScore" class="block text-gray-700 text-sm font-bold mb-2">初始分值</label>
+                                <input type="number" id="initialScore" min="0" max="1000" value="100" class="input-field">
+                            </div>
+                            <button type="button" id="addEmployeeBtn" class="w-full btn-primary text-lg py-3">
+                                <i class="fa fa-plus mr-2"></i>添加员工
+                            </button>
+                        </form>
+                        <div class="mt-8">
+                            <h3 class="text-xl font-semibold text-gray-700 mb-4 flex items-center">
+                                <i class="fa fa-list-ul mr-2"></i>员工列表
+                            </h3>
+                            <div id="employeeList" class="space-y-2 max-h-96 overflow-y-auto">
+                                <div class="text-gray-500 text-center py-4">暂无员工</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. 单据管理模块（修改为下拉多选） -->
+                <div id="documentContent" class="content-section hidden">
+                    <div class="bg-white rounded-xl shadow-lg p-6">
+                        <h3 class="text-xl font-bold text-primary mb-6 flex items-center">
+                            <i class="fa fa-file-text-o mr-3"></i>创建绩效单据
+                        </h3>
+                        <form id="documentForm" class="space-y-6 max-w-2xl">
+                            <div>
+                                <label class="block text-gray-700 text-sm font-bold mb-3">单据类型</label>
+                                <div class="flex gap-4">
+                                    <button type="button" id="rewardBtn" class="flex-1 btn-success">
+                                        <i class="fa fa-plus-circle mr-2"></i>奖励单据
+                                    </button>
+                                    <button type="button" id="penaltyBtn" class="flex-1 btn-secondary">
+                                        <i class="fa fa-minus-circle mr-2"></i>扣分单据
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label for="serialNumber" class="block text-gray-700 text-sm font-bold mb-2">流水号</label>
+                                    <input type="text" id="serialNumber" class="input-field bg-gray-100" readonly>
+                                </div>
+                                <div>
+                                    <label for="documentDate" class="block text-gray-700 text-sm font-bold mb-2">日期</label>
+                                    <input type="date" id="documentDate" class="input-field">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 text-sm font-bold mb-2">选择员工（可多选）</label>
+                                <!-- 替换为下拉多选框 -->
+                                <select id="employeeMultiSelect" class="input-field" multiple placeholder="请选择员工（可多选）">
+                                    <!-- 选项将通过JS动态生成 -->
+                                </select>
+                                <div class="mt-2 text-sm text-gray-500">
+                                    <span id="selectedEmployeesCount">已选择 0 名员工</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label for="score" class="block text-gray-700 text-sm font-bold mb-2">分值</label>
+                                <input type="number" id="score" min="1" max="100" value="10" class="input-field">
+                                <p class="mt-1 text-sm text-gray-500">
+                                    ${currentDocumentType === 'reward' ? '奖励' : '扣分'}分值将应用到所有选中的员工
+                                </p>
+                            </div>
+                            <div>
+                                <label for="reasonSelect" class="block text-gray-700 text-sm font-bold mb-2">原因</label>
+                                <div class="flex gap-2">
+                                    <select id="reasonSelect" class="input-field flex-1">
+                                        <option value="">请选择预设原因</option>
+                                        <option value="迟到">迟到</option>
+                                        <option value="大家来找茬">大家来找茬</option>
+                                        <option value="卫生责任区">卫生责任区</option>
+                                        <option value="精益分享">精益分享</option>
+                                        <option value="提案改善">提案改善</option>
+                                        <option value="本月未扣分奖励">本月未扣分奖励</option>
+                                        <option value="考试">考试</option>
+                                        <option value="其他">其他</option>
+                                    </select>
+                                    <input type="text" id="reason" class="input-field flex-1" placeholder="或输入其他原因">
+                                </div>
+                            </div>
+                            <button type="button" id="saveDocumentBtn" class="w-full btn-primary text-lg py-3">
+                                <i class="fa fa-save mr-2"></i>保存单据
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- 3. 绩效排行模块 -->
+                <div id="rankingContent" class="content-section hidden">
+                    <div class="bg-white rounded-xl shadow-lg p-6">
+                        <h3 class="text-xl font-bold text-primary mb-6 flex items-center">
+                            <i class="fa fa-trophy mr-3"></i>员工绩效分值排行
+                        </h3>
+                        <div class="flex gap-3 mb-6 max-w-md">
+                            <button type="button" id="rankingListBtn" class="flex-1 btn-secondary">
+                                <i class="fa fa-list mr-2"></i>列表视图
+                            </button>
+                            <button type="button" id="tableViewBtn" class="flex-1 btn-primary">
+                                <i class="fa fa-table mr-2"></i>表格视图
+                            </button>
+                            <button type="button" id="chartViewBtn" class="flex-1 btn-secondary">
+                                <i class="fa fa-bar-chart mr-2"></i>图表视图
+                            </button>
+                        </div>
+                        
+                        <!-- 列表视图 -->
+                        <div id="rankingView" class="space-y-3 hidden max-h-96 overflow-y-auto">
+                            <div class="text-gray-500 text-center py-8">暂无员工数据</div>
+                        </div>
+                        
+                        <!-- 表格视图 -->
+                        <div id="tableView">
+                            <div class="flex justify-between items-center mb-4">
+                                <h4 class="text-lg font-semibold text-gray-700">员工绩效分值表</h4>
+                                <button type="button" id="exportTableBtn" class="btn-secondary text-sm">
+                                    <i class="fa fa-download mr-2"></i>导出表格
+                                </button>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table id="scoreTable" class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="table-header">排名</th>
+                                            <th class="table-header">员工姓名</th>
+                                            <th class="table-header">绩效分值</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="scoreTableBody" class="bg-white divide-y divide-gray-200">
+                                        <tr><td colspan="3" class="table-cell text-center text-gray-500">暂无员工数据</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <!-- 图表视图 -->
+                        <div id="chartView" class="hidden h-80 mt-4">
+                            <canvas id="scoreChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. 单据记录模块 -->
+                <div id="historyContent" class="content-section hidden">
+                    <div class="bg-white rounded-xl shadow-lg p-6">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="text-xl font-bold text-primary flex items-center">
+                                <i class="fa fa-history mr-3"></i>单据历史记录
+                            </h3>
+                            <div class="flex gap-3">
+                                <button type="button" id="exportDataBtn" class="btn-secondary">
+                                    <i class="fa fa-download mr-2"></i>导出全部
+                                </button>
+                                <button type="button" id="exportFilteredDataBtn" class="btn-secondary">
+                                    <i class="fa fa-filter mr-2"></i>导出筛选
+                                </button>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap gap-3 mb-6 max-w-md">
+                            <select id="filterType" class="input-field">
+                                <option value="">全部类型</option>
+                                <option value="reward">奖励单据</option>
+                                <option value="penalty">扣分单据</option>
+                            </select>
+                            <select id="filterEmployee" class="input-field">
+                                <option value="">全部员工</option>
+                            </select>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="table-header">流水号</th>
+                                        <th class="table-header">日期</th>
+                                        <th class="table-header">员工</th>
+                                        <th class="table-header">类型</th>
+                                        <th class="table-header">分值</th>
+                                        <th class="table-header">原因</th>
+                                        <th class="table-header">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="documentHistory" class="bg-white divide-y divide-gray-200">
+                                    <tr><td colspan="7" class="table-cell text-center text-gray-500">暂无单据记录</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 通知组件 -->
+    <div id="notification" class="fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg transform transition-all duration-300 z-50 flex items-center translate-y-[-20px] opacity-0"></div>
+
+    <script>
+        // 全局数据
+        let employees = JSON.parse(localStorage.getItem('employees') || '[]');
+        let documents = JSON.parse(localStorage.getItem('documents') || '[]');
+        let nextSerialNumber = parseInt(localStorage.getItem('nextSerialNumber')) || 1;
+        let currentDocumentType = 'reward';
+        let currentContent = 'home'; // 默认显示主页
+        let tomSelectInstance = null; // 多选下拉实例
+
+        // DOM元素（统一获取，避免重复查询）
+        const el = {
+            // 导航相关
+            navHome: document.getElementById('navHome'),
+            navEmployee: document.getElementById('navEmployee'),
+            navDocument: document.getElementById('navDocument'),
+            navRanking: document.getElementById('navRanking'),
+            navHistory: document.getElementById('navHistory'),
+            contentTitle: document.getElementById('contentTitle'),
+            currentDate: document.getElementById('currentDate'),
+            
+            // 内容区域
+            homeContent: document.getElementById('homeContent'),
+            employeeContent: document.getElementById('employeeContent'),
+            documentContent: document.getElementById('documentContent'),
+            rankingContent: document.getElementById('rankingContent'),
+            historyContent: document.getElementById('historyContent'),
+            
+            // 主页数据统计
+            totalEmployees: document.getElementById('totalEmployees'),
+            totalRewardDocs: document.getElementById('totalRewardDocs'),
+            totalPenaltyDocs: document.getElementById('totalPenaltyDocs'),
+            
+            // 员工管理
+            employeeName: document.getElementById('employeeName'),
+            initialScore: document.getElementById('initialScore'),
+            addEmployeeBtn: document.getElementById('addEmployeeBtn'),
+            employeeList: document.getElementById('employeeList'),
+            
+            // 单据管理（修改为下拉多选）
+            serialNumber: document.getElementById('serialNumber'),
+            documentDate: document.getElementById('documentDate'),
+            employeeMultiSelect: document.getElementById('employeeMultiSelect'), // 下拉多选框
+            selectedEmployeesCount: document.getElementById('selectedEmployeesCount'),
+            score: document.getElementById('score'),
+            reasonSelect: document.getElementById('reasonSelect'),
+            reason: document.getElementById('reason'),
+            saveDocumentBtn: document.getElementById('saveDocumentBtn'),
+            documentHistory: document.getElementById('documentHistory'),
+            
+            // 筛选/导出
+            filterType: document.getElementById('filterType'),
+            filterEmployee: document.getElementById('filterEmployee'),
+            exportDataBtn: document.getElementById('exportDataBtn'),
+            exportFilteredDataBtn: document.getElementById('exportFilteredDataBtn'),
+            exportTableBtn: document.getElementById('exportTableBtn'),
+            
+            // 视图切换
+            rankingListBtn: document.getElementById('rankingListBtn'),
+            tableViewBtn: document.getElementById('tableViewBtn'),
+            chartViewBtn: document.getElementById('chartViewBtn'),
+            rankingView: document.getElementById('rankingView'),
+            tableView: document.getElementById('tableView'),
+            chartView: document.getElementById('chartView'),
+            scoreTableBody: document.getElementById('scoreTableBody'),
+            scoreChart: document.getElementById('scoreChart'),
+            
+            // 通知
+            notification: document.getElementById('notification')
+        };
+
+        // 初始化
+        function init() {
+            console.log('✅ 系统初始化开始');
+            // 设置当前日期
+            const now = new Date();
+            el.currentDate.textContent = now.toLocaleDateString('zh-CN', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                weekday: 'long'
+            });
+            
+            // 设置默认单据日期
+            el.documentDate.value = now.toISOString().split('T')[0];
+            
+            // 生成流水号
+            generateSerialNumber();
+            
+            // 绑定所有事件
+            bindEvents();
+            
+            // 渲染初始数据
+            renderAll();
+            
+            console.log('✅ 系统初始化完成');
+        }
+
+        // 切换内容区域
+        function switchContent(type) {
+            // 更新当前内容标识
+            currentContent = type;
+            
+            // 隐藏所有内容区域
+            el.homeContent.classList.add('hidden');
+            el.employeeContent.classList.add('hidden');
+            el.documentContent.classList.add('hidden');
+            el.rankingContent.classList.add('hidden');
+            el.historyContent.classList.add('hidden');
+            
+            // 重置所有导航样式
+            el.navHome.classList.remove('nav-active');
+            el.navEmployee.classList.remove('nav-active');
+            el.navDocument.classList.remove('nav-active');
+            el.navRanking.classList.remove('nav-active');
+            el.navHistory.classList.remove('nav-active');
+            
+            // 更新标题和显示对应内容
+            switch(type) {
+                case 'home':
+                    el.contentTitle.textContent = '主页';
+                    el.homeContent.classList.remove('hidden');
+                    el.navHome.classList.add('nav-active');
+                    updateHomeStats(); // 更新主页统计数据
+                    break;
+                case 'employee':
+                    el.contentTitle.textContent = '员工管理';
+                    el.employeeContent.classList.remove('hidden');
+                    el.navEmployee.classList.add('nav-active');
+                    break;
+                case 'document':
+                    el.contentTitle.textContent = '单据管理';
+                    el.documentContent.classList.remove('hidden');
+                    el.navDocument.classList.add('nav-active');
+                    initEmployeeMultiSelect(); // 初始化下拉多选框
+                    break;
+                case 'ranking':
+                    el.contentTitle.textContent = '绩效排行';
+                    el.rankingContent.classList.remove('hidden');
+                    el.navRanking.classList.add('nav-active');
+                    renderScoreTable(); // 刷新排行数据
+                    break;
+                case 'history':
+                    el.contentTitle.textContent = '单据记录';
+                    el.historyContent.classList.remove('hidden');
+                    el.navHistory.classList.add('nav-active');
+                    renderDocumentHistory(); // 刷新记录数据
+                    break;
+            }
+        }
+
+        // 更新主页统计数据
+        function updateHomeStats() {
+            // 总员工数
+            el.totalEmployees.textContent = employees.length;
+            
+            // 奖励单据数
+            const rewardDocs = documents.filter(doc => doc.type === 'reward').length;
+            el.totalRewardDocs.textContent = rewardDocs;
+            
+            // 扣分单据数
+            const penaltyDocs = documents.filter(doc => doc.type === 'penalty').length;
+            el.totalPenaltyDocs.textContent = penaltyDocs;
+        }
+
+        // 初始化员工下拉多选框
+        function initEmployeeMultiSelect() {
+            // 销毁旧实例
+            if (tomSelectInstance) {
+                tomSelectInstance.destroy();
+            }
+            
+            // 清空选项
+            el.employeeMultiSelect.innerHTML = '';
+            
+            if (employees.length === 0) {
+                // 无员工时添加提示选项
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = '暂无员工，请先添加员工';
+                option.disabled = true;
+                el.employeeMultiSelect.appendChild(option);
+                
+                // 初始化基础控件
+                tomSelectInstance = new TomSelect(el.employeeMultiSelect, {
+                    create: false,
+                    placeholder: '暂无员工，请先添加员工',
+                    disabled: true
+                });
+                
+                updateSelectedEmployeesCount();
+                return;
+            }
+            
+            // 添加员工选项
+            employees.forEach(emp => {
+                const option = document.createElement('option');
+                option.value = emp.id;
+                option.textContent = `${emp.name} (当前分值: ${emp.score})`;
+                el.employeeMultiSelect.appendChild(option);
+            });
+            
+            // 初始化Tom Select
+            tomSelectInstance = new TomSelect(el.employeeMultiSelect, {
+                create: false,
+                maxItems: null, // 允许选择无限个
+                placeholder: '请选择员工（可多选）',
+                plugins: ['remove_button'],
+                render: {
+                    option: function(data, escape) {
+                        // 自定义选项渲染，显示分值颜色
+                        const emp = employees.find(e => e.id === data.value);
+                        const scoreColor = emp && emp.score >= 100 ? 'text-green-600' : 'text-red-600';
+                        return `<div>
+                            ${escape(data.text.split(' (')[0])} 
+                            <span class="${scoreColor}">(${emp ? emp.score : ''}分)</span>
+                        </div>`;
+                    }
+                }
+            });
+            
+            // 监听选择变化
+            tomSelectInstance.on('change', updateSelectedEmployeesCount);
+            
+            updateSelectedEmployeesCount();
+        }
+
+        // 事件绑定函数
+        function bindEvents() {
+            // 1. 添加员工按钮
+            el.addEmployeeBtn.addEventListener('click', function() {
+                console.log('🔘 添加员工按钮点击触发');
+                addEmployee();
+            });
+            // 表单回车提交
+            document.getElementById('employeeForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                addEmployee();
+            });
+
+            // 2. 单据类型切换
+            document.getElementById('rewardBtn').addEventListener('click', () => {
+                currentDocumentType = 'reward';
+                updateDocTypeUI();
+                updateScoreHintText(); // 更新分值提示文本
+            });
+            document.getElementById('penaltyBtn').addEventListener('click', () => {
+                currentDocumentType = 'penalty';
+                updateDocTypeUI();
+                updateScoreHintText(); // 更新分值提示文本
+            });
+
+            // 3. 保存单据（适配下拉多选）
+            el.saveDocumentBtn.addEventListener('click', saveDocument);
+
+            // 4. 视图切换（排行模块）
+            el.rankingListBtn.addEventListener('click', () => switchView('list'));
+            el.tableViewBtn.addEventListener('click', () => switchView('table'));
+            el.chartViewBtn.addEventListener('click', () => switchView('chart'));
+
+            // 5. 筛选器变化
+            el.filterType.addEventListener('change', renderDocumentHistory);
+            el.filterEmployee.addEventListener('change', renderDocumentHistory);
+
+            // 6. 导出功能
+            el.exportDataBtn.addEventListener('click', exportAllData);
+            el.exportFilteredDataBtn.addEventListener('click', exportFilteredData);
+            el.exportTableBtn.addEventListener('click', exportTableData);
+
+            // 7. 原因选择联动
+            el.reasonSelect.addEventListener('change', function() {
+                if (this.value && this.value !== '其他') el.reason.value = this.value;
+                else if (this.value === '其他') el.reason.value = '';
+            });
+
+            // 初始化单据类型UI
+            updateDocTypeUI();
+            updateScoreHintText(); // 初始化分值提示文本
+        }
+
+        // 更新分值提示文本
+        function updateScoreHintText() {
+            const scoreHint = document.querySelector('#documentForm .mt-1.text-sm.text-gray-500');
+            if (scoreHint) {
+                scoreHint.textContent = `${currentDocumentType === 'reward' ? '奖励' : '扣分'}分值将应用到所有选中的员工`;
+            }
+        }
+
+        // 添加员工
+        function addEmployee() {
+            console.log('📝 开始执行添加员工逻辑');
+            const name = el.employeeName.value.trim();
+            const score = parseInt(el.initialScore.value) || 100;
+
+            // 基础验证
+            if (!name) {
+                showNotify('请输入员工姓名', 'error');
+                el.employeeName.focus();
+                return;
+            }
+            if (isNaN(score) || score < 0 || score > 1000) {
+                showNotify('初始分值需为0-1000的数字', 'error');
+                el.initialScore.focus();
+                return;
+            }
+            if (employees.some(emp => emp.name.toLowerCase() === name.toLowerCase())) {
+                showNotify('该员工已存在', 'error');
+                el.employeeName.select();
+                return;
+            }
+
+            // 添加员工
+            const newEmp = {
+                id: Date.now().toString(),
+                name: name,
+                score: score
+            };
+            employees.push(newEmp);
+            
+            // 保存并刷新
+            saveToLocalStorage();
+            renderAll();
+            
+            // 重置表单
+            el.employeeName.value = '';
+            el.initialScore.value = '100';
+            el.employeeName.focus();
+            
+            showNotify(`员工「${name}」添加成功`, 'success');
+            console.log(`✅ 员工${name}添加成功`);
+        }
+
+        // 保存单据（适配下拉多选）
+        function saveDocument() {
+            // 获取选中的员工ID（从下拉多选框获取）
+            const selectedEmployeeIds = tomSelectInstance ? tomSelectInstance.getValue() : [];
+
+            const score = parseInt(el.score.value);
+            const reason = el.reason.value.trim();
+            const date = el.documentDate.value;
+
+            // 验证
+            if (selectedEmployeeIds.length === 0) {
+                return showNotify('请至少选择一名员工', 'error');
+            }
+            if (!score || score < 1) {
+                return showNotify('请输入有效分值', 'error');
+            }
+            if (!reason) {
+                return showNotify('请填写原因', 'error');
+            }
+            if (!date) {
+                return showNotify('请选择日期', 'error');
+            }
+
+            // 批量处理选中的员工
+            const actualScore = currentDocumentType === 'reward' ? score : -score;
+            const currentSerialNumber = el.serialNumber.value;
+            
+            selectedEmployeeIds.forEach(empId => {
+                const emp = employees.find(e => e.id === empId);
+                if (emp) {
+                    // 更新员工分数
+                    emp.score += actualScore;
+                    
+                    // 创建单据记录
+                    const newDoc = {
+                        id: Date.now() + '-' + empId, // 唯一ID
+                        serialNumber: currentSerialNumber,
+                        employeeId: empId,
+                        employeeName: emp.name,
+                        type: currentDocumentType,
+                        score: actualScore,
+                        reason: reason,
+                        date: date
+                    };
+                    documents.push(newDoc);
+                }
+            });
+
+            // 更新流水号
+            nextSerialNumber++;
+            generateSerialNumber();
+            
+            // 保存并刷新
+            saveToLocalStorage();
+            renderAll();
+            
+            // 重置表单
+            el.reason.value = '';
+            el.reasonSelect.value = '';
+            el.score.value = '10';
+            // 清空下拉多选选择
+            if (tomSelectInstance) {
+                tomSelectInstance.clear();
+            }
+            
+            showNotify(`成功为 ${selectedEmployeeIds.length} 名员工创建${currentDocumentType === 'reward' ? '奖励' : '扣分'}单据`, 'success');
+        }
+
+        // 删除单据（带分数回滚）
+        function deleteDocument(docId) {
+            if (!confirm('确定删除该单据吗？删除后分数将自动回滚')) return;
+            const doc = documents.find(d => d.id === docId);
+            if (!doc) return;
+            
+            // 回滚分数
+            const emp = employees.find(e => e.id === doc.employeeId);
+            if (emp) emp.score -= doc.score;
+            
+            // 删除单据
+            documents = documents.filter(d => d.id !== docId);
+            saveToLocalStorage();
+            renderAll();
+            showNotify('单据已删除，分数已回滚', 'success');
+        }
+
+        // 删除员工
+        function deleteEmployee(empId) {
+            if (!confirm('确定删除该员工吗？')) return;
+            employees = employees.filter(e => e.id !== empId);
+            saveToLocalStorage();
+            renderAll();
+            showNotify('员工已删除', 'success');
+        }
+
+        // 一键清空所有数据（仅管理员）
+        function clearAllData() {
+            // 权限验证
+            if (!isAdmin()) {
+                return showNotify('您没有权限执行此操作', 'error');
+            }
+            
+            if (!confirm('⚠️ 警告：此操作将清空所有员工和单据数据，且无法恢复！\n\n确定要继续吗？')) {
+                return;
+            }
+            
+            // 清空所有数据
+            employees = [];
+            documents = [];
+            nextSerialNumber = 1;
+            
+            // 保存并刷新
+            saveToLocalStorage();
+            renderAll();
+            
+            showNotify('所有数据已清空', 'success');
+        }
+
+        // 生成流水号
+        function generateSerialNumber() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const serial = String(nextSerialNumber).padStart(3, '0');
+            el.serialNumber.value = `${year}${month}${serial}`;
+        }
+
+        // 切换排行视图
+        function switchView(type) {
+            el.rankingView.classList.add('hidden');
+            el.tableView.classList.add('hidden');
+            el.chartView.classList.add('hidden');
+            
+            el.rankingListBtn.className = 'flex-1 btn-secondary';
+            el.tableViewBtn.className = 'flex-1 btn-secondary';
+            el.chartViewBtn.className = 'flex-1 btn-secondary';
+
+            if (type === 'list') {
+                el.rankingView.classList.remove('hidden');
+                el.rankingListBtn.className = 'flex-1 btn-primary';
+                renderRankingList();
+            } else if (type === 'table') {
+                el.tableView.classList.remove('hidden');
+                el.tableViewBtn.className = 'flex-1 btn-primary';
+                renderScoreTable();
+            } else if (type === 'chart') {
+                el.chartView.classList.remove('hidden');
+                el.chartViewBtn.className = 'flex-1 btn-primary';
+                renderChart();
+            }
+        }
+
+        // 渲染所有视图
+        function renderAll() {
+            renderEmployeeList();
+            renderEmployeeSelect(); // 旧的单选下拉（供筛选使用）
+            renderDocumentHistory();
+            renderRankingList();
+            renderScoreTable();
+            updateHomeStats(); // 同时更新主页统计
+            
+            // 如果当前在单据管理页面，更新下拉多选框
+            if (currentContent === 'document') {
+                initEmployeeMultiSelect();
+            } else {
+                updateSelectedEmployeesCount();
+            }
+        }
+
+        // 渲染员工列表
+        function renderEmployeeList() {
+            if (employees.length === 0) {
+                el.employeeList.innerHTML = '<div class="text-gray-500 text-center py-4">暂无员工</div>';
+                return;
+            }
+            el.employeeList.innerHTML = employees.map(emp => `
+                <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                    <span class="font-medium">${emp.name}</span>
+                    <div class="flex items-center gap-3">
+                        <span class="${emp.score >= 100 ? 'text-green-600' : 'text-red-600'} font-bold">${emp.score}分</span>
+                        <button onclick="deleteEmployee('${emp.id}')" class="text-red-500 hover:text-red-700">
+                            <i class="fa fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 渲染员工下拉选择框（供筛选使用）
+        function renderEmployeeSelect() {
+            const options = employees.map(emp => `<option value="${emp.id}">${emp.name}</option>`).join('');
+            el.filterEmployee.innerHTML = '<option value="">全部员工</option>' + options;
+        }
+
+        // 更新选中员工计数（适配下拉多选）
+        function updateSelectedEmployeesCount() {
+            if (employees.length === 0) {
+                el.selectedEmployeesCount.textContent = '已选择 0 名员工';
+                return;
+            }
+            
+            const selectedCount = tomSelectInstance ? tomSelectInstance.count : 0;
+            el.selectedEmployeesCount.textContent = `已选择 ${selectedCount} 名员工 (共 ${employees.length} 名)`;
+        }
+
+        // 渲染单据历史
+        function renderDocumentHistory() {
+            const type = el.filterType.value;
+            const empId = el.filterEmployee.value;
+            
+            let filtered = documents;
+            if (type) filtered = filtered.filter(d => d.type === type);
+            if (empId) filtered = filtered.filter(d => d.employeeId === empId);
+            filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            if (filtered.length === 0) {
+                el.documentHistory.innerHTML = '<tr><td colspan="7" class="table-cell text-center text-gray-500">暂无单据记录</td></tr>';
+                return;
+            }
+
+            el.documentHistory.innerHTML = filtered.map(doc => `
+                <tr class="hover:bg-gray-50">
+                    <td class="table-cell font-medium">${doc.serialNumber}</td>
+                    <td class="table-cell">${formatDate(doc.date)}</td>
+                    <td class="table-cell">${doc.employeeName}</td>
+                    <td class="table-cell">
+                        <span class="${doc.type === 'reward' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'} px-2 py-1 rounded-full text-xs">
+                            ${doc.type === 'reward' ? '奖励' : '扣分'}
+                        </span>
+                    </td>
+                    <td class="table-cell font-bold ${doc.score > 0 ? 'text-green-600' : 'text-red-600'}">
+                        ${doc.score > 0 ? '+' : ''}${doc.score}
+                    </td>
+                    <td class="table-cell">${doc.reason}</td>
+                    <td class="table-cell">
+                        <button onclick="deleteDocument('${doc.id}')" class="text-red-500 hover:text-red-700">
+                            <i class="fa fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // 渲染排行榜列表
+        function renderRankingList() {
+            const sorted = [...employees].sort((a, b) => b.score - a.score);
+            if (sorted.length === 0) {
+                el.rankingView.innerHTML = '<div class="text-gray-500 text-center py-8">暂无员工数据</div>';
+                return;
+            }
+            el.rankingView.innerHTML = sorted.map((emp, i) => `
+                <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                    <div class="flex items-center">
+                        <span class="w-8 h-8 flex items-center justify-center rounded-full ${i===0?'bg-yellow-100':i===1?'bg-gray-100':i===2?'bg-orange-100':'bg-gray-50'} font-bold mr-3">
+                            ${i+1}
+                        </span>
+                        <span>${emp.name}</span>
+                    </div>
+                    <span class="font-bold ${emp.score >= 100 ? 'text-green-600' : 'text-red-600'}">${emp.score}分</span>
+                </div>
+            `).join('');
+        }
+
+        // 渲染分数表格
+        function renderScoreTable() {
+            const sorted = [...employees].sort((a, b) => b.score - a.score);
+            if (sorted.length === 0) {
+                el.scoreTableBody.innerHTML = '<tr><td colspan="3" class="table-cell text-center text-gray-500">暂无员工数据</td></tr>';
+                return;
+            }
+            el.scoreTableBody.innerHTML = sorted.map((emp, i) => `
+                <tr class="hover:bg-gray-50">
+                    <td class="table-cell">
+                        <span class="w-8 h-8 flex items-center justify-center rounded-full ${i===0?'bg-yellow-100':i===1?'bg-gray-100':i===2?'bg-orange-100':'bg-gray-50'} font-bold text-sm">
+                            ${i+1}
+                        </span>
+                    </td>
+                    <td class="table-cell font-medium">${emp.name}</td>
+                    <td class="table-cell font-bold ${emp.score >= 100 ? 'text-green-600' : 'text-red-600'}">${emp.score} 分</td>
+                </tr>
+            `).join('');
+        }
+
+        // 渲染柱状图
+        function renderChart() {
+            const sorted = [...employees].sort((a, b) => b.score - a.score);
+            if (sorted.length === 0) return;
+
+            // 销毁旧图表
+            if (window.scoreChartInstance) window.scoreChartInstance.destroy();
+            
+            // 创建新图表
+            window.scoreChartInstance = new Chart(el.scoreChart, {
+                type: 'bar',
+                data: {
+                    labels: sorted.map(e => e.name),
+                    datasets: [{
+                        label: '绩效分数',
+                        data: sorted.map(e => e.score),
+                        backgroundColor: sorted.map(e => e.score >= 100 ? 'rgba(22, 163, 74, 0.7)' : 'rgba(220, 38, 38, 0.7)'),
+                        borderColor: sorted.map(e => e.score >= 100 ? 'rgb(22, 163, 74)' : 'rgb(220, 38, 38)'),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: false, min: Math.max(0, Math.min(...sorted.map(e=>e.score)) - 10) } },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        // 导出全部数据
+        function exportAllData() {
+            exportData(documents, '全部单据数据');
+        }
+
+        // 导出筛选数据
+        function exportFilteredData() {
+            const type = el.filterType.value;
+            const empId = el.filterEmployee.value;
+            let filtered = documents;
+            if (type) filtered = filtered.filter(d => d.type === type);
+            if (empId) filtered = filtered.filter(d => d.employeeId === empId);
+            exportData(filtered, '筛选单据数据');
+        }
+
+        // 导出表格数据（CSV格式）
+        function exportTableData() {
+            const sorted = [...employees].sort((a, b) => b.score - a.score);
+            if (sorted.length === 0) return showNotify('暂无数据可导出', 'warning');
+            
+            // 生成CSV内容
+            let csv = '排名,员工姓名,绩效分值\n';
+            sorted.forEach((emp, i) => {
+                csv += `${i+1},${emp.name},${emp.score}\n`;
+            });
+            
+            // 下载文件
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `员工绩效分值表_${formatDate(new Date())}.csv`;
+            link.click();
+            URL.revokeObjectURL(url);
+            
+            showNotify('表格数据导出成功', 'success');
+        }
+
+        // 通用导出函数
+        function exportData(data, title) {
+            if (data.length === 0) return showNotify('暂无数据可导出', 'warning');
+            
+            const exportObj = {
+                title: title,
+                exportTime: new Date().toLocaleString(),
+                data: data
+            };
+            const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${title}_${formatDate(new Date())}.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+            
+            showNotify(`${title}导出成功`, 'success');
+        }
+
+        // 工具函数：保存到本地存储
+        function saveToLocalStorage() {
+            localStorage.setItem('employees', JSON.stringify(employees));
+            localStorage.setItem('documents', JSON.stringify(documents));
+            localStorage.setItem('nextSerialNumber', nextSerialNumber.toString());
+        }
+
+        // 工具函数：格式化日期
+        function formatDate(date) {
+            const d = new Date(date);
+            return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+        }
+
+        // 工具函数：显示通知
+        function showNotify(message, type = 'info') {
+            const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : type === 'warning' ? '⚠️' : 'ℹ️';
+            el.notification.innerHTML = `${icon} ${message}`;
+            el.notification.className = 'fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg transform transition-all duration-300 z-50 flex items-center';
+            el.notification.style.backgroundColor = type === 'success' ? '#16a34a' : type === 'error' ? '#dc2626' : type === 'warning' ? '#f59e0b' : '#0ea5e9';
+            el.notification.style.color = 'white';
+            
+            // 显示后3秒隐藏
+            el.notification.classList.remove('translate-y-[-20px]', 'opacity-0');
+            setTimeout(() => {
+                el.notification.classList.add('translate-y-[-20px]', 'opacity-0');
+            }, 3000);
+        }
+
+        // 工具函数：更新单据类型UI
+        function updateDocTypeUI() {
+            const rewardBtn = document.getElementById('rewardBtn');
+            const penaltyBtn = document.getElementById('penaltyBtn');
+            if (currentDocumentType === 'reward') {
+                rewardBtn.className = 'flex-1 btn-success';
+                penaltyBtn.className = 'flex-1 btn-secondary';
+            } else {
+                rewardBtn.className = 'flex-1 btn-secondary';
+                penaltyBtn.className = 'flex-1 btn-danger';
+            }
+        }
+
+        // 全局暴露函数（供HTML内联调用）
+        window.deleteEmployee = deleteEmployee;
+        window.deleteDocument = deleteDocument;
+        window.switchContent = switchContent;
+        window.clearAllData = clearAllData;
+        window.updateSelectedEmployeesCount = updateSelectedEmployeesCount;
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
 </html>
